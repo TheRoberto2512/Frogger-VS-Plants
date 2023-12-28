@@ -1,3 +1,8 @@
 *.o
+# per tutti i file generati dal make
+
 game
+# per l'eseguibile generato dal comando make
+
 *.gch
+# per altri eventuali file generati dal compilatore
