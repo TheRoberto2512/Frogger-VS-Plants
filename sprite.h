@@ -59,34 +59,34 @@
 \*************************/
 
 // Stampa tutta la scoreboard nella finestra indicata.
-void printScoreBoard(WINDOW *win, int lives, int score, int time, int fullTime);
+void printScoreBoard(WINDOW *win, short lives, short score, short time, short fullTime);
 
 // Stampa tutta la mappa nella finestra indicata. Gli ultimi due booleani servono rispettivamente per decidere se aggiornare o no anche la parte superiore della mappa (le tane) e la parte inferiore (il marciapiede).
 void printMap(WINDOW *win, bool top, bool bottom, bool lilyPads[], bool newBG);
 
 // Stampa la riga contenene le tane della rana (implementata dentro printMap).
-void printLilyPads(WINDOW *win, int x, int y, bool lilyPads[], int crocX, short direction);
+void printLilyPads(WINDOW *win, short x, short y, bool lilyPads[], short crocX,short direction);
 
 // Stampa la una singola tana (implementata dentro printLilyPads).
-void printSingleLilyPad(WINDOW *win, int x, int y, bool empty);
+void printSingleLilyPad(WINDOW *win, short x, short y, bool empty);
 
 // Stampa una riga di terreno, usata per marciapiede e sponda (implementata dentro printMap).
-void printGroundLine(WINDOW *win, int x, int y);
+void printGroundLine(WINDOW *win, short x, short y);
 
 // Stampa una riga di fiume.
-void printRiverLine(WINDOW *win, int x, int y);
+void printRiverLine(WINDOW *win, short x, short y);
 
 // Stampa la rana.
-void printFrog(WINDOW *win, int x, int y);
+void printFrog(WINDOW *win, short x, short y);
 
 // Stampa un coccodrillo (direction == 0 -> sinistra, direction == 1 -> destra).
-void printCrocodile(WINDOW *win, int x, int y, short direction);
+void printCrocodile(WINDOW *win, short x, short y, short direction);
 
 // Stampa un coccodrillo cattivo (direction == 0 -> sinistra, direction == 1 -> destra).
-void printBadCrocodile(WINDOW *win, int x, int y, short direction);
+void printBadCrocodile(WINDOW *win, short x, short y, short direction);
 
 // Stampa un fiore nemico.
-void printEnemy(WINDOW *win, int x, int y);
+void printEnemy(WINDOW *win, short x, short y);
 
 // Stampa un coccodrillo di background sotto le tane.
-void printBGCrocodile(WINDOW *win, int x, int y, short direction);
+void printBGCrocodile(WINDOW *win, short x, short y, short direction);

@@ -24,7 +24,7 @@ int main()
 
     WINDOW *gameArea = newwin( ROWS_PER_MAP +2, (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+2, 2, 1);
 
-    printScoreBoard(scoreBoard, 2, 2512, 30, 30); 
+    printScoreBoard(scoreBoard, 2, 0, 30, 30); 
 
     printMap(gameArea, true, true, tane, true);
 

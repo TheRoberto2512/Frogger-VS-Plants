@@ -14,7 +14,7 @@
 \*************************/
 
 // Inizializza il colore N con i valori rgb.
-void inizializzaColore(int N, int r, int g, int b);
+void inizializzaColore(short N, short r, short g, short b);
 
 // Crea tutte le coppie di colori necessarie per il gioco.
 void istanziaColori();
