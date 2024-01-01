@@ -54,7 +54,7 @@ void printScoreBoard(WINDOW *win, short lives, short score, short time, short fu
     }
 }
 
-void printMap(WINDOW *win, bool top, bool bottom, bool lilyPads[], bool newBG)
+void printMap(WINDOW *win, bool bottom, bool lilyPads[], bool newBG)
 {
     CHANGE_COLOR(win, DEFAULT);
     wborder(win, ACS_VLINE, ACS_VLINE, ACS_HLINE, ACS_HLINE, ACS_LTEE, ACS_RTEE, ACS_LLCORNER, ACS_LRCORNER);
@@ -101,11 +101,8 @@ void printMap(WINDOW *win, bool top, bool bottom, bool lilyPads[], bool newBG)
     }
 
     short x = 1, y = 1;  // 0, 0 saranno occupati dal bordo
-    if(top)
-    {
-        printLilyPads(win, x, y, lilyPads, crocX, direction);
-        y += ROWS_PER_BLOCK * LILY_PADS_ROWS;
-    }
+    printLilyPads(win, x, y, lilyPads, crocX, direction);
+    y += ROWS_PER_BLOCK * LILY_PADS_ROWS;
     y += ROWS_PER_SEPARATOR; // conta anche il separatore
 
     // stampa le righe della sponda dopo il fiume
