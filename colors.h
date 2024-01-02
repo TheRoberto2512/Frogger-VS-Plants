@@ -6,7 +6,7 @@
 #define CONVERSION_CONSTANT 3.921
 
 // Semplifica il cambio della coppia di colori attiva.
-#define CHANGE_COLOR(win, n) wattron(win, COLOR_PAIR(n))
+#define CHANGE_COLOR(n) attron(COLOR_PAIR(n))
 
 
 /*************************\
@@ -14,7 +14,7 @@
 \*************************/
 
 // Inizializza il colore N con i valori rgb.
-void inizializzaColore(short N, short r, short g, short b);
+void inizializzaColore(int N, int r, int g, int b);
 
 // Crea tutte le coppie di colori necessarie per il gioco.
 void istanziaColori();

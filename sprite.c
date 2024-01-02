@@ -4,61 +4,57 @@
 #include "sprite.h"
 #include "colors.h"
 
-void printScoreBoard(WINDOW *win, short lives, short score, short time, short fullTime)
+void printScoreBoard(short lives, short score, short time, short fullTime)
 {
-    CHANGE_COLOR(win, DEFAULT);
-    wborder(win, ACS_VLINE, ACS_VLINE, ACS_HLINE, ACS_HLINE, ACS_ULCORNER, ACS_URCORNER, ACS_LTEE, ACS_RTEE);
+    CHANGE_COLOR(DEFAULT);
     short padding = 2;  // caratteri lasciati dai bordi verticali
     short spaces = (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS - (padding * 2)- 25 - 15 - 47)/2;
     short x = 1, y = 1; // 0, 0 saranno occupati dal bordo
     x += padding; //aggiungiamo del padding
-    mvwprintw(win, y, x, "Vite rimanenti: "); x += 16;
+    mvprintw(y, x, "Vite rimanenti: "); x += 16;
 
     for(short i = 0; i < 3; i++)
     {
         if(i < lives)
         {
-            mvwprintw(win, y, x, "%lc  ", L'🐸'); x += 3;
+            mvprintw(y, x, "%lc  ", L'🐸'); x += 3;
         }
         else
         {
-            mvwprintw(win, y, x, "%lc  ", L'💀'); x += 3;
+            mvprintw(y, x, "%lc  ", L'💀'); x += 3;
         } 
     }
     
     x += spaces;
-    mvwprintw(win, y, x, "Punteggio: "); x += 11;
-    mvwprintw(win, y, x, "%04hd", score); x += 4;
+    mvprintw(y, x, "Punteggio: "); x += 11;
+    mvprintw(y, x, "%04hd", score); x += 4;
     x += spaces;
 
-    mvwprintw(win, y, x, "Tempo rimanente: "); x += 17;
+    mvprintw(y, x, "Tempo rimanente: "); x += 17;
 
     if(time > (fullTime - fullTime/3))
-        CHANGE_COLOR(win, SC_HIGH);
+        CHANGE_COLOR(SC_HIGH);
     else if (time > (fullTime/3))
-        CHANGE_COLOR(win, SC_MID);
+        CHANGE_COLOR(SC_MID);
     else
-        CHANGE_COLOR(win, SC_LOW);
+        CHANGE_COLOR(SC_LOW);
 
     for(short i = 0; i < 30; i++)
     {
         if(i < time)
         {
-            mvwprintw(win, y, x, "█"); x++;
+            mvprintw(y, x, "█"); x++;
         }
         else
         {
-            CHANGE_COLOR(win, DEFAULT);
-            mvwprintw(win, y, x, "█"); x++;
+            CHANGE_COLOR(DEFAULT);
+            mvprintw(y, x, "█"); x++;
         }
     }
 }
 
-void printMap(WINDOW *win, bool bottom, bool lilyPads[], bool newBG)
+void printMap(bool bottom, bool lilyPads[], bool newBG)
 {
-    CHANGE_COLOR(win, DEFAULT);
-    wborder(win, ACS_VLINE, ACS_VLINE, ACS_HLINE, ACS_HLINE, ACS_LTEE, ACS_RTEE, ACS_LLCORNER, ACS_LRCORNER);
-
     static short crocX = -500, direction, speed = 1, crocUpdate;
 
     if(crocX != -500) // se esiste un coccodrillo
@@ -100,30 +96,30 @@ void printMap(WINDOW *win, bool bottom, bool lilyPads[], bool newBG)
         crocUpdate++;
     }
 
-    short x = 1, y = 1;  // 0, 0 saranno occupati dal bordo
-    printLilyPads(win, x, y, lilyPads, crocX, direction);
+    short x = 1, y = 3;  // 0, 0 saranno occupati dal bordo
+    printLilyPads(x, y, lilyPads, crocX, direction);
     y += ROWS_PER_BLOCK * LILY_PADS_ROWS;
     y += ROWS_PER_SEPARATOR; // conta anche il separatore
 
     // stampa le righe della sponda dopo il fiume
     for(short i = 0; i < RIVERSIDE_ROWS; i++)
     {
-        printGroundLine(win, x, y);
+        printGroundLine(x, y);
         y += ROWS_PER_BLOCK;
     } 
 
     // stampa il fiume
     for(short i = 0; i < RIVER_ROWS; i++)
     {
-        printRiverLine(win, x, y);
+        printRiverLine(x, y);
         y += ROWS_PER_BLOCK;
     }  
 
     if(bottom)
-        printGroundLine(win, x, y);
+        printGroundLine(x, y);
 }
 
-void printLilyPads(WINDOW *win, short x, short y, bool lilyPads[], short crocX, short direction)
+void printLilyPads(short x, short y, bool lilyPads[], short crocX, short direction)
 {
     double r = BLOCK_PER_MAP_ROWS / 5;
     static short coords[5] = { -1, -1, -1, -1, -1};
@@ -134,36 +130,36 @@ void printLilyPads(WINDOW *win, short x, short y, bool lilyPads[], short crocX, 
             coords[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
         }
     
-    printRiverLine(win, x, y);
+    printRiverLine(x, y);
     if(crocX != -500)
     {
-        printBGCrocodile(win, crocX, 1, direction);
+        printBGCrocodile(crocX, 3, direction);
     }
     
-    CHANGE_COLOR(win, PRATO);
+    CHANGE_COLOR(PRATO);
     for(short j = 0; j < COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS; j++)
     {
-        mvwprintw(win, y + ROWS_PER_BLOCK, x+j, " ");
+        mvprintw(y + ROWS_PER_BLOCK, x+j, " ");
     }
 
     for(short i = 0; i < 5; i++)
     {
-        printSingleLilyPad(win, coords[i], y, lilyPads[i]);
-        CHANGE_COLOR(win, PRATO_E_ACQUA);
+        printSingleLilyPad(coords[i], y, lilyPads[i]);
+        CHANGE_COLOR(PRATO_E_ACQUA);
         for(short z = 0; z < 11; z++)
-            mvwprintw(win, y + ROWS_PER_BLOCK, coords[i]-1+z, "▄");
+            mvprintw(y + ROWS_PER_BLOCK, coords[i]-1+z, "▄");
     }
 }
 
-void printGroundLine(WINDOW *win, short x, short y)
+void printGroundLine(short x, short y)
 {
     short startX = x;
-    CHANGE_COLOR(win, PRATO);
+    CHANGE_COLOR(PRATO);
     for(short i = 0; i < ROWS_PER_BLOCK; i++)
     {
         for(short j = 0; j < COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS; j++)
         {
-            mvwprintw(win, y, x, " ");
+            mvprintw(y, x, " ");
             x++;
         }
         y++;
@@ -171,15 +167,15 @@ void printGroundLine(WINDOW *win, short x, short y)
     } 
 }
 
-void printRiverLine(WINDOW *win, short x, short y)
+void printRiverLine(short x, short y)
 {
     short startX = x;
-    CHANGE_COLOR(win, FIUME);
+    CHANGE_COLOR(FIUME);
     for(short i = 0; i < ROWS_PER_BLOCK; i++)
     {
         for(short j = 0; j < COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS; j++)
         {
-            mvwprintw(win, y, x, " ");
+            mvprintw(y, x, " ");
             x++;
         }
         y++;
@@ -187,7 +183,7 @@ void printRiverLine(WINDOW *win, short x, short y)
     } 
 }
 
-void printSingleLilyPad(WINDOW *win, short x, short y, bool empty)
+void printSingleLilyPad(short x, short y, bool empty)
 {
     wchar_t sprite[ROWS_PER_BLOCK][LILY_PADS_COLUMNS] =
     { 
@@ -211,8 +207,8 @@ void printSingleLilyPad(WINDOW *win, short x, short y, bool empty)
         {
             if(sprite[i][j] != 'n')
             {
-                CHANGE_COLOR(win, colors[i][j]);
-                mvwprintw(win, y+i, x+j, "%lc", sprite[i][j]);
+                CHANGE_COLOR(colors[i][j]);
+                mvprintw(y+i, x+j, "%lc", sprite[i][j]);
             }
         }
     }
@@ -226,14 +222,14 @@ void printSingleLilyPad(WINDOW *win, short x, short y, bool empty)
             { L' ', L' ', L' ', L' ', L' ', L' ', L' ' },
             { L' ', L'n', L'▄', L' ', L'▄', L'n', L' ' }
         };
-        CHANGE_COLOR(win, RANA);
+        CHANGE_COLOR(RANA);
         for(short i = 0; i < ROWS_PER_BLOCK; i++)
         {
             for(short j = 0; j < FROG_COLUMNS; j++)
             {
                 if(spriteF[i][j] != L'n')
                 {
-                    mvwprintw(win, y+i, x+j+1, "%lc", spriteF[i][j]);
+                    mvprintw(y+i, x+j+1, "%lc", spriteF[i][j]);
                 }
                 
             }
@@ -241,7 +237,7 @@ void printSingleLilyPad(WINDOW *win, short x, short y, bool empty)
     }
 }
 
-void printCrocodile(WINDOW *win, short x, short y, short direction)
+void printCrocodile(short x, short y, short direction)
 {
     wchar_t sprite[ROWS_PER_BLOCK][CROCODILE_COLUMNS] =
     {
@@ -268,8 +264,8 @@ void printCrocodile(WINDOW *win, short x, short y, short direction)
                 short xx = x+(CROCODILE_COLUMNS - j);
                 if(sprite[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                 {
-                    CHANGE_COLOR(win, colors[i][j]);
-                    mvwprintw(win, y+i, xx, "%lc", sprite[i][j]);
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, xx, "%lc", sprite[i][j]);
                 }
             }
         }
@@ -281,14 +277,14 @@ void printCrocodile(WINDOW *win, short x, short y, short direction)
                 short xx = x+j+1;
                 if(sprite[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                 {
-                    CHANGE_COLOR(win, colors[i][j]);
-                    mvwprintw(win, y+i, xx, "%lc", sprite[i][j]);
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, xx, "%lc", sprite[i][j]);
                 }
             }
         }
 }
 
-void printBadCrocodile(WINDOW *win, short x, short y, short direction)
+void printBadCrocodile(short x, short y, short direction)
 {
     wchar_t sprite[ROWS_PER_BLOCK][CROCODILE_COLUMNS] =
     {
@@ -315,8 +311,8 @@ void printBadCrocodile(WINDOW *win, short x, short y, short direction)
                 short xx = x+(CROCODILE_COLUMNS - j);
                 if(sprite[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                 {
-                    CHANGE_COLOR(win, colors[i][j]);
-                    mvwprintw(win, y+i, xx, "%lc", sprite[i][j]);
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, xx, "%lc", sprite[i][j]);
                 }
             }
         }
@@ -328,14 +324,14 @@ void printBadCrocodile(WINDOW *win, short x, short y, short direction)
                 short xx = x+j+1;
                 if(sprite[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                 {
-                    CHANGE_COLOR(win, colors[i][j]);
-                    mvwprintw(win, y+i, xx, "%lc", sprite[i][j]);
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, xx, "%lc", sprite[i][j]);
                 }
             }
         }
 }
 
-void printEnemy(WINDOW *win, short x, short y)
+void printEnemy(short x, short y)
 {
     wchar_t sprite[ROWS_PER_BLOCK][ENEMY_COLUMNS] =
     {
@@ -359,15 +355,15 @@ void printEnemy(WINDOW *win, short x, short y)
         {
             if(sprite[i][j] != L'n')
             {
-                CHANGE_COLOR(win, colors[i][j]);
-                mvwprintw(win, y+i, x+j, "%lc", sprite[i][j]);
+                CHANGE_COLOR(colors[i][j]);
+                mvprintw(y+i, x+j, "%lc", sprite[i][j]);
             }
             
         }
     }
 }
 
-void printFrog(WINDOW *win, short x, short y)
+void printFrog(short x, short y)
 {
     wchar_t sprite[ROWS_PER_BLOCK][FROG_COLUMNS] =
     {
@@ -377,21 +373,21 @@ void printFrog(WINDOW *win, short x, short y)
         { L' ', L'n', L'n', L'n', L'n', L'n', L' ' },
     };
 
-    CHANGE_COLOR(win, RANA);
+    CHANGE_COLOR(RANA);
     for(short i = 0; i < ROWS_PER_BLOCK; i++)
     {
         for(short j = 0; j < FROG_COLUMNS; j++)
         {
             if(sprite[i][j] != L'n')
             {
-                mvwprintw(win, y+i, x+j, "%lc", sprite[i][j]);
+                mvprintw(y+i, x+j, "%lc", sprite[i][j]);
             }
             
         }
     }
 }
 
-void printBGCrocodile(WINDOW *win, short x, short y, short direction)
+void printBGCrocodile(short x, short y, short direction)
 {
     static short tails = 0;
     wchar_t sprite0[ROWS_PER_BLOCK][BC_CROC_COLUMNS] =
@@ -415,7 +411,7 @@ void printBGCrocodile(WINDOW *win, short x, short y, short direction)
     else
         tails = 1;
 
-    CHANGE_COLOR(win, FIUME);
+    CHANGE_COLOR(FIUME);
     if(direction) // vanno a destra
     {
         for(short i = 0; i < ROWS_PER_BLOCK; i++)
@@ -427,14 +423,14 @@ void printBGCrocodile(WINDOW *win, short x, short y, short direction)
                 {
                     if(sprite1[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                     {
-                        mvwprintw(win, y+i, xx, "%lc", sprite1[i][j]);
+                        mvprintw(y+i, xx, "%lc", sprite1[i][j]);
                     }
                 }
                 else
                 {
                     if(sprite0[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                     {
-                        mvwprintw(win, y+i, xx, "%lc", sprite0[i][j]);
+                        mvprintw(y+i, xx, "%lc", sprite0[i][j]);
                     }
                 }
             }
@@ -451,14 +447,14 @@ void printBGCrocodile(WINDOW *win, short x, short y, short direction)
                 {
                     if(sprite1[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                     {
-                        mvwprintw(win, y+i, xx, "%lc", sprite1[i][j]);
+                        mvprintw(y+i, xx, "%lc", sprite1[i][j]);
                     }
                 }
                 else
                 {
                     if(sprite0[i][j] != L'n' && (xx >= 1 && xx < (COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS)+1))
                     {
-                        mvwprintw(win, y+i, xx, "%lc", sprite0[i][j]);
+                        mvprintw(y+i, xx, "%lc", sprite0[i][j]);
                     }
                 }
             }
@@ -466,4 +462,38 @@ void printBGCrocodile(WINDOW *win, short x, short y, short direction)
     }
 }
 
+void customBorder(short x, short y, short top, short side, bool separator)
+{
+    CHANGE_COLOR(DEFAULT); move(y, x);
+    printw("%lc", L'┌'); 
+    for(short i = 0; i < top - 2; i++)
+    {
+        printw("%lc", L'─');
+    }
+    printw("%lc", L'┐'); move(y+1, x);
+    for (short i = 0; i < side - 2; i++)
+    {
+        printw("%lc", L'│');
+        move(y+1+i, x+top-1);
+        printw("%lc", L'│');
+        move(y+2+i, x);
+    }
+    printw("%lc", L'└');
+    for(short i = 0; i < top - 2; i++)
+    {
+        printw("%lc", L'─');
+    }
+    printw("%lc", L'┘');
+
+    if(separator)
+    {
+        move(y+2, x); printw("%lc", L'├');
+        for(short i = 0; i < top - 2; i++)
+        {
+            printw("%lc", L'─');
+        } printw("%lc", L'┤');
+    }
+
+    refresh();
+}
 // ▀ █ ▄

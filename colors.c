@@ -1,7 +1,7 @@
 #include <curses.h>
 #include "colors.h"
 
-void inizializzaColore(short N, short r, short g, short b)
+void inizializzaColore(int N, int r, int g, int b)
 {
     init_color(N, r * CONVERSION_CONSTANT, g * CONVERSION_CONSTANT, b * CONVERSION_CONSTANT);
 }

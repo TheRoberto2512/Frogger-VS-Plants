@@ -30,8 +30,8 @@
 // Numero di "blocchi" (colonne) per ogni riga.
 #define BLOCK_PER_MAP_ROWS 15
 
-// Numero totale di colonne (in caratteri) per ogni riga.
-#define COLUMNS_PER_MAP BLOCK_PER_MAP_ROWS * COLUMNS_PER_BLOCK
+// Numero di caratteri per ogni riga.
+#define COLUMNS_PER_MAP COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS
 
 // Numero totale di righe (in caratteri) della mappa di gioco.
 #define ROWS_PER_MAP (LILY_PADS_ROWS + RIVERSIDE_ROWS + RIVER_ROWS + SIDEWALK_ROWS) * ROWS_PER_BLOCK + ROWS_PER_SEPARATOR
@@ -62,34 +62,37 @@
 \*************************/
 
 // Stampa tutta la scoreboard nella finestra indicata.
-void printScoreBoard(WINDOW *win, short lives, short score, short time, short fullTime);
+void printScoreBoard(short lives, short score, short time, short fullTime);
 
 // Stampa tutta la mappa nella finestra indicata. Gli ultimi due booleani servono rispettivamente per decidere se aggiornare o no anche la parte superiore della mappa (le tane) e la parte inferiore (il marciapiede).
-void printMap(WINDOW *win, bool bottom, bool lilyPads[], bool newBG);
+void printMap(bool bottom, bool lilyPads[], bool newBG);
 
 // Stampa la riga contenene le tane della rana (implementata dentro printMap).
-void printLilyPads(WINDOW *win, short x, short y, bool lilyPads[], short crocX,short direction);
+void printLilyPads(short x, short y, bool lilyPads[], short crocX, short direction);
 
 // Stampa la una singola tana (implementata dentro printLilyPads).
-void printSingleLilyPad(WINDOW *win, short x, short y, bool empty);
+void printSingleLilyPad(short x, short y, bool empty);
 
 // Stampa una riga di terreno, usata per marciapiede e sponda (implementata dentro printMap).
-void printGroundLine(WINDOW *win, short x, short y);
+void printGroundLine(short x, short y);
 
 // Stampa una riga di fiume.
-void printRiverLine(WINDOW *win, short x, short y);
+void printRiverLine(short x, short y);
 
 // Stampa la rana.
-void printFrog(WINDOW *win, short x, short y);
+void printFrog(short x, short y);
 
 // Stampa un coccodrillo (direction == 0 -> sinistra, direction == 1 -> destra).
-void printCrocodile(WINDOW *win, short x, short y, short direction);
+void printCrocodile(short x, short y, short direction);
 
 // Stampa un coccodrillo cattivo (direction == 0 -> sinistra, direction == 1 -> destra).
-void printBadCrocodile(WINDOW *win, short x, short y, short direction);
+void printBadCrocodile(short x, short y, short direction);
 
 // Stampa un fiore nemico.
-void printEnemy(WINDOW *win, short x, short y);
+void printEnemy(short x, short y);
 
 // Stampa un coccodrillo di background sotto le tane.
-void printBGCrocodile(WINDOW *win, short x, short y, short direction);
+void printBGCrocodile(short x, short y, short direction);
+
+// Stampa un bordo custom.
+void customBorder(short x, short y, short top, short side, bool separato);
