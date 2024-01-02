@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "sprite.h": "c",
-        "functionsp.h": "c",
-        "stddef.h": "c",
-        "curses.h": "c",
-        "structs.h": "c"
-    }
-}
