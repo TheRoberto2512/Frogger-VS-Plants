@@ -9,4 +9,4 @@ Università degli Studi di Cagliari - Informatica Applicata e Data Analytics [60
 
 *Roberto A. Usai*
 
-*Silvio Cocco*
+*Chiara Scalas*
