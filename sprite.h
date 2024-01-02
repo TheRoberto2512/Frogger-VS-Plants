@@ -95,4 +95,4 @@ void printEnemy(short x, short y);
 void printBGCrocodile(short x, short y, short direction);
 
 // Stampa un bordo custom.
-void customBorder(short x, short y, short top, short side, bool separato);
+void customBorder(short x, short y, short top, short side, bool separator);

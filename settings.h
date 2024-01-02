@@ -1,3 +1,16 @@
+#include <curses.h>
+
+typedef struct gameRules
+{
+    short time;
+    bool enemies;
+    float BadCrocodile;
+    short speed;
+} GameRules;
+
+// Funzione che restituisce le impostazioni in base alla difficolta'.
+GameRules getRules(short difficult);
+
 /************\
 *  PUNTEGGI  *
 \************/
@@ -55,4 +68,4 @@
 #define HARD_BAD_CROCODILE 0
 
 // Velocita' di movimento dei coccodrilli.
-#define MEDIUM_SPEED 2
+#define HARD_SPEED 2

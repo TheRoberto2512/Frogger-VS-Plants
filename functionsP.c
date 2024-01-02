@@ -76,24 +76,21 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
     } while (true);
 }
 
-void mainManager(int frogToMain[], int mainToFrog[])
+void mainManager(short fullTime, int frogToMain[], int mainToFrog[])
 {
-    bool BGCroc = true;
-    Frog frogger; bool tane[5] = {true, true, true, true, true};
-    int c = 0;
+    short punteggio = 0, vite = 3, fps = 0, seconds = 0;
+    Frog frogger;
+    bool tane[5] = {true, true, true, true, true};
     do
     {
         read(frogToMain[READ], &frogger, sizeof(frogger));
 
-        if(c < 3)
-        {
-            clear(); c++;
-        }
+        if(fps < 3 && seconds == 0)
+            clear();
+        
         customBorder(0, 0, COLUMNS_PER_MAP+2, ROWS_PER_MAP + 4, true);
-        printScoreBoard(2, 0, 30, 30); 
-        printMap(true, tane, BGCroc);
-        if(BGCroc)
-            BGCroc = false;
+        printScoreBoard(vite, punteggio, fullTime-seconds, fullTime); 
+        printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);
         printFrog(frogger.x, frogger.y);
         if(FROG_DEBUG)
         {
@@ -103,13 +100,14 @@ void mainManager(int frogToMain[], int mainToFrog[])
         }
         
         refresh();
-
+        fps++;
+        if(fps != 0 && fps % 30 == 0)
+        {
+            fps = 0;
+            seconds++;
+        }
+            
         usleep(FRAME_UPDATE);
 
     } while(true);
-}
-
-void riverHandler()
-{
-    
 }
