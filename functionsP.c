@@ -19,7 +19,7 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
     bool update; int ch;
     do {
         read(mainToFrog[READ], &frogger, sizeof(frogger)); // prova a leggere le nuove coordinate della rana (in caso sia su un coccodrillo)
-        update = true;
+        update = false;
         if((ch = getch()) != ERR)
         {
             switch(ch) //qui dentro modifichiamo x e y
@@ -65,7 +65,7 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
                     break;
 
                 case ' ': // generazione di un proietile
-                    //write(FPHToMain[WRITE], &frogger, sizeof(frogger)); // comunichiamo la posizione corrente al processo che gestira' i proiettili
+                    write(FPHToMain[WRITE], &frogger, sizeof(frogger)); // comunichiamo la posizione corrente al processo che gestira' i proiettili
                     break;
             }
 
@@ -87,8 +87,7 @@ void mainManager(int frogToMain[], int mainToFrog[])
 
         if(c < 3)
         {
-            clear();
-            c++;
+            clear(); c++;
         }
         customBorder(0, 0, COLUMNS_PER_MAP+2, ROWS_PER_MAP + 4, true);
         printScoreBoard(2, 0, 30, 30); 
@@ -108,4 +107,9 @@ void mainManager(int frogToMain[], int mainToFrog[])
         usleep(FRAME_UPDATE);
 
     } while(true);
+}
+
+void riverHandler()
+{
+    
 }

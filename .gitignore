@@ -6,3 +6,6 @@ game
 
 *.gch
 # per altri eventuali file generati dal compilatore
+
+.vscode
+# per evitare che la cartella di sviluppo di vscode venga salvata su github

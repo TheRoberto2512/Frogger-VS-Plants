@@ -17,13 +17,12 @@ int main()
     initscr();
     noecho();
     curs_set(0);
-    start_color();
-    istanziaColori();
+    start_color(); istanziaColori();
     cbreak();
     nodelay(stdscr, TRUE); // nessun delay per la getch()
     keypad(stdscr, TRUE); //attiva i tasti speciali (le frecce)
     
-        // pipes
+    // pipes
     int mainToFrog[2]; pipe(mainToFrog);
     fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK);
     //fcntl(mainToFrog[WRITE], F_SETFL, O_NONBLOCK);
