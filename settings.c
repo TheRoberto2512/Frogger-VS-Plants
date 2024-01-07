@@ -6,21 +6,21 @@ GameRules getRules(short difficult)
 
     switch (difficult)
     {
-        case 1:
+        case EASY:
             rules.time = EASY_TIME;
             rules.enemies = EASY_ENEMIES;
             rules.BadCrocodile = EASY_BAD_CROCODILE;
             rules.speed = EASY_SPEED;
           break;
 
-        case 2:
+        case MEDIUM:
             rules.time = MEDIUM_TIME;
             rules.enemies = MEDIUM_ENEMIES;
             rules.BadCrocodile = MEDIUM_BAD_CROCODILE;
             rules.speed = MEDIUM_SPEED;
           break;
 
-        case 3:
+        case HARD:
             rules.time = HARD_TIME;
             rules.enemies = HARD_ENEMIES;
             rules.BadCrocodile = HARD_BAD_CROCODILE;

@@ -17,10 +17,10 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[]);
 void frogProjectilesHandler(int frogProjPipe[], int killProjPipe[]);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-void mainManager(short fullTime, int frogToMain[], int mainToFrog[]);
+void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
 void riverHandler();
 
 // Processo che gestisce un singolo coccodrillo.
-void singleCrocodileHandler();
+void singleCrocodileHandler(int crocToMain[], int crocToRivH[], Crocodile me);

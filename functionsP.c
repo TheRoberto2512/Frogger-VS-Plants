@@ -1,11 +1,13 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <curses.h>
 
 #include "functionsP.h"
 #include "sprite.h"
 #include "structs.h"
+#include "settings.h"
 
 void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
 {
@@ -76,10 +78,10 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
     } while (true);
 }
 
-void mainManager(short fullTime, int frogToMain[], int mainToFrog[])
+void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[])
 {
     short punteggio = 0, vite = 3, fps = 0, seconds = 0;
-    Frog frogger;
+    Frog frogger; Crocodile croc;
     bool tane[5] = {true, true, true, true, true};
     do
     {
@@ -89,14 +91,30 @@ void mainManager(short fullTime, int frogToMain[], int mainToFrog[])
             clear();
         
         customBorder(0, 0, COLUMNS_PER_MAP+2, ROWS_PER_MAP + 4, true);
-        printScoreBoard(vite, punteggio, fullTime-seconds, fullTime); 
+        printScoreBoard(vite, punteggio, startTime-seconds, FULL_TIME); 
         printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);
+
+        ssize_t bytes_read = read(crocToMain[READ], &croc, sizeof(croc));
+        if(bytes_read != -1)
+        {
+            if(croc.splash == -10)
+            {
+                printCrocodile(croc.x, croc.y, croc.direction); 
+            }
+            else
+            {
+                printBadCrocodile(croc.x, croc.y, croc.direction); 
+            }
+        }
+
         printFrog(frogger.x, frogger.y);
         if(FROG_DEBUG)
         {
             customBorder(COLUMNS_PER_MAP+4, 0, 11, 3, false);
             CHANGE_COLOR(DEFAULT);
-            mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y); 
+            mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y);
+            customBorder(COLUMNS_PER_MAP+4, 4, 11, 3, false); 
+            mvprintw(5, COLUMNS_PER_MAP+5, "%03d : %03d", croc.x, croc.y);
         }
         
         refresh();
@@ -106,8 +124,57 @@ void mainManager(short fullTime, int frogToMain[], int mainToFrog[])
             fps = 0;
             seconds++;
         }
-            
         usleep(FRAME_UPDATE);
 
     } while(true);
+}
+
+void riverHandler()
+{
+
+}
+
+void singleCrocodileHandler(int crocToMain[], int crocToRivH[], Crocodile me)
+{
+    bool keepGoing = true; int aliveTime = 1;
+    me.PID = getpid();
+    write(crocToMain[WRITE], &me, sizeof(me)); // scrive le sue coordinate
+    usleep(FRAME_UPDATE);
+    aliveTime++;
+
+    do
+    {
+        if(aliveTime % me.speed == 0) // se deve aggiornarsi
+        {
+            if(me.direction) // se e' 1 va a destra
+            {
+                me.x++;
+                if(me.x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
+                    keepGoing = false;
+            }
+            else // se e' 0 va a sinistra
+            {
+                me.x--;
+                if(me.x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
+                    keepGoing = false;
+            }
+        }
+        if(me.splash != -10)
+        {
+            me.splash--;
+            if(me.splash == 0)
+            {
+                keepGoing = false;
+            }
+        }
+        write(crocToMain[WRITE], &me, sizeof(me)); // comunica le cordinate al manager
+        aliveTime++;
+        usleep(FRAME_UPDATE);
+
+    } while (keepGoing);
+
+    write(crocToRivH[WRITE], &me.PID, sizeof(me.PID)); // comunica il suo PID al padre
+
+    usleep(1000 * 1000 * 1000); // va in pausa in attesa che il padre esegua kill e wait
+
 }

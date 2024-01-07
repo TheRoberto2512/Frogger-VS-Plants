@@ -7,6 +7,6 @@ Università degli Studi di Cagliari - Informatica Applicata e Data Analytics [60
 
 ### Contributors:
 
-*Roberto A. Usai*
+*Roberto A. Usai (60/79/00029)*
 
-*Chiara Scalas*
+*Riccardo Secchi (60/79/00074)*

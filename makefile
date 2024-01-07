@@ -17,4 +17,4 @@ colors.o: colors.c
 	gcc -c colors.c 
 
 clean:
-	rm -f *.o *.gch game
+	rm -f *.o *.gch
