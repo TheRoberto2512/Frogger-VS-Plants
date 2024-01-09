@@ -1,6 +1,8 @@
 #include <curses.h>
 
 // Struttura per gestire le regole di gioco.
+#ifndef RULES_GUARD
+#define RULES_GUARD
 typedef struct gameRules
 {
     short time;
@@ -8,6 +10,7 @@ typedef struct gameRules
     float BadCrocodile;
     short speed;
 } GameRules;
+#endif
 
 // Costante per riferirisi alla difficolta' facile.
 #define EASY 1
@@ -56,7 +59,7 @@ GameRules getRules(short difficult);
 #define EASY_BAD_CROCODILE 0
 
 // Velocita' massima di movimento dei coccodrilli.
-#define EASY_SPEED 3
+#define EASY_SPEED 2
 
 
 // Tempo (in secondi) per la difficolta' intermedia.
@@ -68,7 +71,7 @@ GameRules getRules(short difficult);
 // Regola lo spawn-rate dei coccodrilli cattivi.
 #define MEDIUM_BAD_CROCODILE 3
 
-// Velocita' di movimento dei coccodrilli.
+// Velocita' massima di movimento dei coccodrilli.
 #define MEDIUM_SPEED 2
 
 
@@ -81,5 +84,5 @@ GameRules getRules(short difficult);
 // Regola lo spawn-rate dei coccodrilli cattivi.
 #define HARD_BAD_CROCODILE 2
 
-// Velocita' di movimento dei coccodrilli.
-#define HARD_SPEED 2
+// Velocita' massima di movimento dei coccodrilli.
+#define HARD_SPEED 1

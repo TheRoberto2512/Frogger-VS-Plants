@@ -7,31 +7,31 @@
 \******************/
 
 // Numero di righe occupate dalle tane.
-#define LILY_PADS_ROWS 1
+#define LILY_PADS_ROWS ((short)1)
 
 // Numero di righe oltre il fiume (tane escluse).
-#define RIVERSIDE_ROWS 2
+#define RIVERSIDE_ROWS ((short)2)
 
 // Numero di corsie del fiume.
-#define RIVER_ROWS 8
+#define RIVER_ROWS ((short)8)
 
 // Numero di righe del marciapiede (spawn della rana).
-#define SIDEWALK_ROWS 1
+#define SIDEWALK_ROWS ((short)1)
 
 // Numero di righe per ogni blocco.
-#define ROWS_PER_BLOCK 4
+#define ROWS_PER_BLOCK ((short)4)
 
 // Numero di colonne per ogni blocco.
-#define COLUMNS_PER_BLOCK 7
+#define COLUMNS_PER_BLOCK ((short)7)
 
 // Numero di colonne per il separatore tra righe oltre il fiume e tane.
-#define ROWS_PER_SEPARATOR 1
+#define ROWS_PER_SEPARATOR ((short)1)
 
 // Numero di "blocchi" (colonne) per ogni riga.
-#define BLOCK_PER_MAP_ROWS 15
+#define BLOCK_PER_MAP_ROWS (15)
 
 // Numero di caratteri per ogni riga.
-#define COLUMNS_PER_MAP COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS
+#define COLUMNS_PER_MAP ((short)(COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS))
 
 // Numero totale di righe (in caratteri) della mappa di gioco.
 #define ROWS_PER_MAP (LILY_PADS_ROWS + RIVERSIDE_ROWS + RIVER_ROWS + SIDEWALK_ROWS) * ROWS_PER_BLOCK + ROWS_PER_SEPARATOR
@@ -42,19 +42,19 @@
 \********************/
 
 // Numero di colonne per la stampa delle tane.
-#define LILY_PADS_COLUMNS 9
+#define LILY_PADS_COLUMNS ((short)9)
 
 // Numero di colonne per la stampa dei coccodrilli.
-#define CROCODILE_COLUMNS 21
+#define CROCODILE_COLUMNS (short)(21)
 
 // Numero di colonne per la stampa dei nemici.
-#define ENEMY_COLUMNS 7
+#define ENEMY_COLUMNS (short)(7)
 
 // Numero di colonne per la stampa della rana.
-#define FROG_COLUMNS 7
+#define FROG_COLUMNS (short)(7)
 
 // Numero di colonne per la stampa del coccodrillo in background.
-#define BC_CROC_COLUMNS 19
+#define BC_CROC_COLUMNS (short)(19)
 
 
 /*************************\

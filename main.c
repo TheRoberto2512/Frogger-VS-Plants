@@ -20,10 +20,13 @@ int main()
     initscr(); noecho(); curs_set(0);
     start_color(); istanziaColori(); cbreak();
     nodelay(stdscr, TRUE); // nessun delay per la getch()
-    keypad(stdscr, TRUE); //attiva i tasti speciali (le frecce)
+    keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
+    mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse
     
-    GameRules regole = getRules(1);
-    
+    // ... 
+
+    GameRules regole = getRules(EASY);
+
     game(regole);
 
     endwin();
@@ -33,13 +36,13 @@ int main()
 void game(GameRules rules)
 {
     // pipes
-    int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK);
-    int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK);
-    int FPHToMain[2];  pipe(FPHToMain);  fcntl(FPHToMain[READ], F_SETFL, O_NONBLOCK);
+    int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
+    int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
+    int FPHToMain[2];  pipe(FPHToMain);  fcntl(FPHToMain[READ], F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
+    int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ], F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
 
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
-    int crocToRivH[2]; pipe(crocToRivH); fcntl(crocToRivH[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al riverHandler
 
     __pid_t frog = fork();
 
@@ -56,15 +59,7 @@ void game(GameRules rules)
 
         if(croc == 0)
         {
-            Crocodile crocc;
-            crocc.y = 20;
-            crocc.splash = -10;
-            crocc.x = 50;
-            crocc.direction = 0;
-            crocc.speed = 2;
-            close(crocToMain[READ]);
-            close(crocToRivH[READ]);
-            singleCrocodileHandler(crocToMain, crocToRivH, crocc);
+            riverHandler(crocToMain, mainToRivH, rules);
         }
         else if(croc > 0)
         {

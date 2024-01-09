@@ -1,5 +1,5 @@
 all: main.o colors.o sprite.o functionsP.o settings.o
-	gcc -g main.o sprite.o colors.o functionsp.o settings.o -o game -lncursesw
+	gcc -g main.o sprite.o colors.o functionsP.o settings.o -o game -lncursesw
 
 main.o: main.c
 	gcc -c main.c 
