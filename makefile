@@ -1,20 +1,23 @@
-all: main.o colors.o sprite.o functionsP.o settings.o
-	gcc -g main.o sprite.o colors.o functionsP.o settings.o -o game -lncursesw
+all: main.o colors.o sprite.o crocList.o functionsP.o settings.o
+	gcc -g main.o sprite.o colors.o crocList.o functionsP.o settings.o -o game -lncursesw
 
 main.o: main.c
-	gcc -c main.c 
+	gcc -g -c main.c 
 
-functionsP.o: functionsP.c
-	gcc -c functionsP.c
+functionsP.o: functionsP.c functionsP.h
+	gcc -g -c functionsP.c
 
-settings.o: settings.c
-	gcc -c settings.c
+crocList.o: crocList.c crocList.h 
+	gcc -g -c crocList.c
 
-sprite.o: sprite.c
-	gcc -c sprite.c
+settings.o: settings.c settings.h
+	gcc -g -c settings.c
 
-colors.o: colors.c
-	gcc -c colors.c 
+sprite.o: sprite.c sprite.h
+	gcc -g -c sprite.c
+
+colors.o: colors.c colors.h
+	gcc -g -c colors.c 
 
 clean:
-	rm -f *.o *.gch
+	rm -f *.o *.gch game

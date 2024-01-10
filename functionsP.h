@@ -53,6 +53,9 @@ short randomNumber(short min, short max);
 // Funzione per calcolare la Y di un coccodrillo in base al numero della corsia (0-7).
 short computeY(short n);
 
+// Funzione per calcolare la corsia di un coccodrillo in base alla sua altezza Y.
+short reverseComputeY(short n);
+
 // Funzione per assemblare facilmente una variabile Crocodile.
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash);
 

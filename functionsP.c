@@ -9,6 +9,7 @@
 #include "sprite.h"
 #include "structs.h"
 #include "settings.h"
+#include "crocList.h"
 
 
 /*********************\
@@ -91,7 +92,12 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
 void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[])
 {
     short punteggio = 0, vite = 3, fps = 0, seconds = 0;
-    Frog frogger; Crocodile croc;
+    Frog frogger;
+    CrocList cList; Crocodile croc;
+    for(short i = 0; i < RIVER_ROWS; i++)
+    {
+        cList.lanes[i] = NULL;
+    }
     bool tane[5] = {true, true, true, true, true};
     do
     {
@@ -109,17 +115,12 @@ void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocTo
             bytes_read = read(crocToMain[READ], &croc, sizeof(croc));
             if(bytes_read != -1)
             {
-                if(croc.splash == -10)
-                {
-                    printCrocodile(croc.x, croc.y, croc.direction); 
-                }
-                else
-                {
-                    printBadCrocodile(croc.x, croc.y, croc.direction); 
-                }
+                Update(&cList, reverseComputeY(croc.y), croc, fps);
             }
         } while (bytes_read != -1);
-
+        DeleteUnnecessary(&cList, fps);
+        //clear();
+        printList(&cList);
 
         printFrog(frogger.x, frogger.y);
         if(FROG_DEBUG)
@@ -133,7 +134,7 @@ void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocTo
         fps++;
         if(fps != 0 && fps % 30 == 0)
         {
-            fps = 0;
+            //fps = 0;
             seconds++;
         }
         usleep(FRAME_UPDATE);
@@ -280,6 +281,14 @@ short computeY(short n)
 {
     short y = n * ROWS_PER_BLOCK;
     y +=  (ROWS_PER_BLOCK * (1 + 1 + RIVERSIDE_ROWS)); // considera la scoreaboard, le tane e le righe del fiume.
+    return y;
+}
+
+short reverseComputeY(short n)
+{
+    short y = (ROWS_PER_BLOCK * (1 + 1 + RIVERSIDE_ROWS));
+    y /= (n * ROWS_PER_BLOCK);
+    return y;
 }
 
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash)

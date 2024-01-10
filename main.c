@@ -15,21 +15,13 @@
 void game(GameRules rules);
 
 int main()
-{
-    setlocale(LC_ALL, "");
-    initscr(); noecho(); curs_set(0);
-    start_color(); istanziaColori(); cbreak();
-    nodelay(stdscr, TRUE); // nessun delay per la getch()
-    keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
-    mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse
-    
+{  
     // ... 
 
     GameRules regole = getRules(EASY);
 
     game(regole);
 
-    endwin();
     return 0;
 }
 
@@ -44,28 +36,40 @@ void game(GameRules rules)
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
 
-    __pid_t frog = fork();
+    __pid_t croc = fork();
 
-    if(frog == 0)
+    if(croc == 0)
     {
-        close(frogToMain[READ]);  // pipe dove scrive le coordinate
-        close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-        close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
-        frogHandler(frogToMain, mainToFrog, FPHToMain);
+        riverHandler(crocToMain, mainToRivH, rules);
     }
-    else if(frog > 0)
+    else if(croc > 0)
     {
-        __pid_t croc = fork();
 
-        if(croc == 0)
+        setlocale(LC_ALL, "");
+        initscr(); noecho(); curs_set(0);
+        start_color(); istanziaColori(); cbreak();
+        nodelay(stdscr, TRUE); // nessun delay per la getch()
+        keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
+        mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse
+
+        __pid_t frog = fork();
+
+        if(frog == 0)
         {
-            riverHandler(crocToMain, mainToRivH, rules);
+            
+            close(frogToMain[READ]);  // pipe dove scrive le coordinate
+            close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
+            close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
+            frogHandler(frogToMain, mainToFrog, FPHToMain);
         }
-        else if(croc > 0)
+        else if(frog > 0)
         {
             close(frogToMain[WRITE]);
             close(mainToFrog[READ]);
+
             mainManager(rules.time, frogToMain, mainToFrog, crocToMain, mainToRivH);
         }
     }
+
+    endwin();
 }
