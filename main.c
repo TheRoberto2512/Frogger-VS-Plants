@@ -23,7 +23,7 @@ int main()
     GameUpdates thisGame; thisGame.lives = LIVES; thisGame.score = 0;
 
     game(&regole, &thisGame);
-    
+
     return 0;
 }
 
@@ -49,31 +49,41 @@ void game(GameRules *rules, GameUpdates *thisGame)
     }
     else if(croc > 0)
     {
-        initscr(); noecho(); curs_set(0);
-        start_color(); istanziaColori(); cbreak();
-        nodelay(stdscr, TRUE); // nessun delay per la getch()
-        keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
-        mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
+        pid_t frogPRJH = fork();
 
-        pid_t frog = fork();
-
-        if(frog == 0)
+        if(frogPRJH == 0)
         {
-            
-            close(frogToMain[READ]);  // pipe dove scrive le coordinate
-            close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-            close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
-            frogHandler(frogToMain, mainToFrog, frogToFPH);
+            frogProjectilesHandler(frogToFPH, FPHToMain, mainToFPH, rules->speed);
+            //usleep(60 * 1000 * 10000);
         }
-        else if(frog > 0)
+        else
         {
-            close(frogToMain[WRITE]);
-            close(mainToFrog[READ]);
-            mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH);
+            initscr(); noecho(); curs_set(0);
+            start_color(); istanziaColori(); cbreak();
+            nodelay(stdscr, TRUE); // nessun delay per la getch()
+            keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
+            mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-            endwin();
-            kill(frog, SIGTERM);        // uccide la rana
-            waitpid(frog, &status, 0); 
+            pid_t frog = fork();
+
+            if(frog == 0)
+            {
+                
+                close(frogToMain[READ]);  // pipe dove scrive le coordinate
+                close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
+                close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
+                frogHandler(frogToMain, mainToFrog, frogToFPH);
+            }
+            else if(frog > 0)
+            {
+                close(frogToMain[WRITE]);
+                close(mainToFrog[READ]);
+                mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, FPHToMain, mainToFPH);
+
+                endwin();
+                kill(frog, SIGTERM);        // uccide la rana
+                waitpid(frog, &status, 0); 
+            }
         }
     }
 

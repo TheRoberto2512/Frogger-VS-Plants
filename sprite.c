@@ -500,7 +500,7 @@ void customBorder(short x, short y, short top, short side, bool separator)
 
 void printProjectile(short x, short y, bool Fromfrog)
 {
-    CHANGE_COLOR(stdscr, PROIETTILI);
+    CHANGE_COLOR(PROIETTILI);
 
     if(Fromfrog)
         mvprintw(y, x, " ");
