@@ -12,6 +12,18 @@ typedef struct gameRules
 } GameRules;
 #endif
 
+#ifndef GAMEUPDATES_GUARD
+#define GAMEUPDATES_GUARD
+typedef struct gameUpdates
+{
+    short lives;
+    short score;
+} GameUpdates;
+#endif
+
+// Costante per riferirisi alla difficolta' facile.
+#define LIVES 3
+
 // Costante per riferirisi alla difficolta' facile.
 #define EASY 1
 

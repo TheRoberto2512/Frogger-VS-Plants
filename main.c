@@ -1,10 +1,11 @@
-#include <stdio.h>
 #include <unistd.h>
 #include <curses.h>
 #include <locale.h>
 #include <stddef.h>
 #include <time.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #include "colors.h"
 #include "sprite.h"
@@ -12,21 +13,27 @@
 #include "functionsP.h"
 #include "settings.h"
 
-void game(GameRules rules);
+void game(GameRules *rules, GameUpdates *thisGame);
 
 int main()
 {  
+    setlocale(LC_ALL, "");
+
     // ... 
 
     GameRules regole = getRules(EASY);
+    GameUpdates thisGame; thisGame.lives = LIVES; thisGame.score = 0;
 
-    game(regole);
+
+    game(&regole, &thisGame);
+    
 
     return 0;
 }
 
-void game(GameRules rules)
+void game(GameRules *rules, GameUpdates *thisGame)
 {
+    int status; // servira' dopo per la waitpid()
     // pipes
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
@@ -44,13 +51,11 @@ void game(GameRules rules)
     }
     else if(croc > 0)
     {
-
-        setlocale(LC_ALL, "");
         initscr(); noecho(); curs_set(0);
         start_color(); istanziaColori(); cbreak();
         nodelay(stdscr, TRUE); // nessun delay per la getch()
         keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
-        mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse
+        mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
         __pid_t frog = fork();
 
@@ -66,10 +71,26 @@ void game(GameRules rules)
         {
             close(frogToMain[WRITE]);
             close(mainToFrog[READ]);
+            mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH);
 
-            mainManager(rules.time, frogToMain, mainToFrog, crocToMain, mainToRivH);
+            endwin();
+            kill(frog, SIGTERM);        // uccide la rana
+            waitpid(frog, &status, 0); 
         }
     }
 
-    endwin();
+    kill(croc, SIGTERM);        // uccide il riverHandler
+    waitpid(croc, &status, 0); 
+
+    usleep(FRAME_UPDATE); Crocodile crocc;
+
+    ssize_t bytes_read = -1;
+    do{
+        bytes_read = read(crocToMain[READ], &croc, sizeof(croc)); // read(...) restituisce il numero di byte letti (-1 se non legge nulla) 
+        if(bytes_read != -1)
+        {
+            kill(crocc.PID, SIGTERM);
+            waitpid(crocc.PID, &status, 0); 
+        }
+    } while (bytes_read != -1); // controlla che non sia rimasto nessun coccodrillo in vita, in caso li uccide
 }

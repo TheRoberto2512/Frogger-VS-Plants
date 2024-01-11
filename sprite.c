@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
+
 #include "sprite.h"
 #include "colors.h"
 

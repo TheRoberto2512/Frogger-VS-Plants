@@ -89,60 +89,74 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
     } while (true);
 }
 
-void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[])
+void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[])
 {
-    short punteggio = 0, vite = 3, fps = 0, seconds = 0;
-    Frog frogger;
-    CrocList cList; Crocodile croc;
-    for(short i = 0; i < RIVER_ROWS; i++)
-    {
+    Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e il coccodrillo appena letto
+    short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
+    short minRow = ROWS_PER_MAP - 1;
+    
+    for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
         cList.lanes[i] = NULL;
-    }
-    bool tane[5] = {true, true, true, true, true};
-    do
-    {
-        read(frogToMain[READ], &frogger, sizeof(frogger));
 
-        if(fps < 3 && seconds == 0)
+    bool tane[5] = {true, true, true, true, true};
+
+    do{
+        ssize_t bytes = -1;
+        bytes = read(frogToMain[READ], &frogger, sizeof(frogger)); // prima lettura della rana
+        if(bytes != -1 && frogger.y < minRow)
+        {
+            minRow = frogger.y;
+            currentGame->score += ROW_UP;
+        }
+
+        if(fps < 3 && seconds == 0) // evita casi di schermo che non si aggiorna 
+        {
             clear();
+            customBorder(0, 0, COLUMNS_PER_MAP+2, ROWS_PER_MAP + 4, true);
+        }                        
         
-        customBorder(0, 0, COLUMNS_PER_MAP+2, ROWS_PER_MAP + 4, true);
-        printScoreBoard(vite, punteggio, startTime-seconds, FULL_TIME); 
-        printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);
+        printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
+        printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);                            // stampa la mappa
 
         ssize_t bytes_read = -1;
         do{
-            bytes_read = read(crocToMain[READ], &croc, sizeof(croc));
+            bytes_read = read(crocToMain[READ], &croc, sizeof(croc)); // read(...) restituisce il numero di byte letti (-1 se non legge nulla) 
             if(bytes_read != -1)
             {
                 Update(&cList, reverseComputeY(croc.y), croc, fps);
             }
-        } while (bytes_read != -1);
-        DeleteUnnecessary(&cList, fps);
-        //clear();
-        printList(&cList);
+        } while (bytes_read != -1);             // finche' c'e' da leggere legge
+        DeleteUnnecessary(&cList, fps);         // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
+        printList(&cList);                      // stampa i coccodrilli
 
         printFrog(frogger.x, frogger.y);
-        if(FROG_DEBUG)
+        if(FROG_DEBUG)                          // stampa le coordinate della rana (utile per il debug)
         {
             customBorder(COLUMNS_PER_MAP+4, 0, 11, 3, false);
             CHANGE_COLOR(DEFAULT);
             mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y);
         }
         
-        refresh();
+        refresh(); // visualizza l'interfaccia aggiornata
+
         fps++;
-        if(fps != 0 && fps % 30 == 0)
-        {
-            //fps = 0;
+        if(fps != 0 && fps % 30 == 0) // ogni 30 update passa un secondo
             seconds++;
+
+        usleep(FRAME_UPDATE);  // riposa
+
+        if((rules->time-seconds) <= -1)
+        {
+            currentGame->lives = currentGame->lives - 1;
+            break;
         }
-        usleep(FRAME_UPDATE);
 
     } while(true);
+    
+    killAll(&cList);
 }
 
-void riverHandler(int crocToMain[], int mainToRivH[], GameRules rules)
+void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
 {
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};   // [i] dove deve spawnare il coccodrillo se la sua direzione e' i
     short directions[RIVER_ROWS];                               // salva le direzioni delle corsie
@@ -150,7 +164,7 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules rules)
     short spawnTimers[RIVER_ROWS] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};
 
     randomSeed(); // impostiamo un seme random
-    riverSpeeds(speeds, rules.speed);
+    riverSpeeds(speeds, rules->speed);
     directions[0] = rand() % 2; // puo' essere 0 o 1
 
     for(short i = 1; i < RIVER_ROWS; i++)
@@ -269,7 +283,8 @@ void singleCrocodileHandler(int crocToMain[], Crocodile me)
 
     } while (keepGoing);
 
-    usleep(1000 * 1000 * 1000); // va in pausa in attesa che il padre esegua kill e wait
+    usleep(FRAME_UPDATE * 10); // va in pausa
+    exit(0);
 }
 
 

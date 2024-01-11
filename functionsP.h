@@ -31,10 +31,10 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[]);
 void frogProjectilesHandler(int frogProjPipe[], int killProjPipe[]);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-void mainManager(short startTime, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[]);
+void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
-void riverHandler(int crocToMain[], int mainToRivH[], GameRules rules);
+void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
 
 // Processo che gestisce un singolo coccodrillo.
 void singleCrocodileHandler(int crocToMain[], Crocodile me);
