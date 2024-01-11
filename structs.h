@@ -11,7 +11,7 @@ typedef struct frog
 #define CROC_GUARD
 typedef struct crocodile
 {
-    __pid_t PID;        // per identificare il coccodrillo
+    pid_t PID;        // per identificare il coccodrillo
     short x;            // coordinata x
     short y;            // coordinata y
     short direction;    // direzione

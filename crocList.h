@@ -20,7 +20,7 @@ typedef struct CrocList
 void Update(CrocList* list, short lane, Crocodile croc, short updateTime);
 
 // Uccide un pid nella corsia specificata.
-void Kill(CrocList* list, short lane, __pid_t crocPid);
+void Kill(CrocList* list, short lane, pid_t crocPid);
 
 // Uccide tutti i pid di tutte le corsie.
 void killAll(CrocList* list);

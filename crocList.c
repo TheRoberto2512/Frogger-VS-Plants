@@ -8,7 +8,7 @@
 #include "sprite.h"
 
 // La si vuole "nascosta" e utilizzabile solo dalle funzioni di questo file.
-void KillR(CrocElement* elem, __pid_t crocPid);
+void KillR(CrocElement* elem, pid_t crocPid);
 
 void Update(CrocList* list, short lane, Crocodile croc, short updateTime)
 {
@@ -51,7 +51,7 @@ void UpdateR(CrocElement* elem, Crocodile croc, short updateTime)
     }
 }
 
-void Kill(CrocList* list, short lane, __pid_t crocPid)
+void Kill(CrocList* list, short lane, pid_t crocPid)
 {
     if(list->lanes[lane] != NULL) // esiste almeno un elemento
     {
@@ -89,7 +89,7 @@ void Kill(CrocList* list, short lane, __pid_t crocPid)
     }
 }
 
-void KillR(CrocElement* elem, __pid_t crocPid)
+void KillR(CrocElement* elem, pid_t crocPid)
 {
     if(elem->next != NULL)
     {

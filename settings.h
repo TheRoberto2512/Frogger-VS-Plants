@@ -68,7 +68,7 @@ GameRules getRules(short difficult);
 #define EASY_ENEMIES false
 
 // Regola lo spawn-rate dei coccodrilli cattivi.
-#define EASY_BAD_CROCODILE 0
+#define EASY_BAD_CROCODILE 0 // (non ci saranno coccodrilli cattivi)
 
 // Velocita' massima di movimento dei coccodrilli.
 #define EASY_SPEED 2
@@ -81,7 +81,7 @@ GameRules getRules(short difficult);
 #define MEDIUM_ENEMIES true
 
 // Regola lo spawn-rate dei coccodrilli cattivi.
-#define MEDIUM_BAD_CROCODILE 3
+#define MEDIUM_BAD_CROCODILE 4 // (1/4 saranno coccodrilli cattivi)
 
 // Velocita' massima di movimento dei coccodrilli.
 #define MEDIUM_SPEED 2
@@ -94,7 +94,7 @@ GameRules getRules(short difficult);
 #define HARD_ENEMIES true
 
 // Regola lo spawn-rate dei coccodrilli cattivi.
-#define HARD_BAD_CROCODILE 2
+#define HARD_BAD_CROCODILE 3 // (1/3 saranno coccodrilli cattivi)
 
 // Velocita' massima di movimento dei coccodrilli.
 #define HARD_SPEED 1

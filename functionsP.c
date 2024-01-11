@@ -159,60 +159,17 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
 {
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};   // [i] dove deve spawnare il coccodrillo se la sua direzione e' i
-    short directions[RIVER_ROWS];                               // salva le direzioni delle corsie
-    short speeds[RIVER_ROWS];                                   // salva le velocita' delle corsie
-    short spawnTimers[RIVER_ROWS] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};
+    
+    short directions[RIVER_ROWS];                                                               // salva le direzioni delle corsie
+    short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
+    short spawnTimers[RIVER_ROWS] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};   // inizializzati a valori altissimi
 
     randomSeed(); // impostiamo un seme random
+
     riverSpeeds(speeds, rules->speed);
     directions[0] = rand() % 2; // puo' essere 0 o 1
 
-    for(short i = 1; i < RIVER_ROWS; i++)
-    {
-        if(directions[i-1]) // se e' 1
-            directions[i] = 0;
-        else
-            directions[i] = 1;
-    }
-    
-    for(int i = 0; i < RIVER_ROWS; i++)
-    {
-        if(directions[i]) // se la direzione e' destra
-        { 
-            short min = COLUMNS_PER_MAP - (COLUMNS_PER_BLOCK * 5);
-            short max = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK;
-            short currentX = randomNumber(min, max);
-            
-            spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], -10));
-
-            do{
-                currentX -= crocodileSpace(); // spazio tra un coccodrillo e l'altro
-                currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
-                spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], -10));
-            } while( currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK);
-
-            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - currentX) * speeds[i];
-        }
-        else // se la direzione e' sinistra
-        {   
-            short min = COLUMNS_PER_BLOCK;
-            short max = COLUMNS_PER_BLOCK * 5;
-            short currentX = randomNumber(min, max);
-            
-            spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], -10));
-
-            do{
-                currentX += crocodileSpace(); // spazio tra un coccodrillo e l'altro
-                currentX += CROCODILE_COLUMNS; // la x e' la prima colonna
-                spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], -10));
-            } while( currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK));
-
-            currentX += CROCODILE_COLUMNS;
-
-            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - (COLUMNS_PER_MAP - currentX)) * speeds[i];
-        }
-
-    }
+    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, rules);
         
     ssize_t bytes_read = -1;
     while (true)
@@ -231,7 +188,7 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
         {
             if(spawnTimers[i] == 0)
             {
-                spawnCrocodile(crocToMain, buildCrocodile(spawns[directions[i]], computeY(i), directions[i], speeds[i], -10));
+                spawnCrocodile(crocToMain, buildCrocodile(spawns[directions[i]], computeY(i), directions[i], speeds[i], rules->BadCrocodile));
                 if(directions[i]) // se va a destra
                     spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[i];
                 else
@@ -306,20 +263,30 @@ short reverseComputeY(short n)
     return y;
 }
 
-Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash)
+Crocodile buildCrocodile(short x, short y, short direction, short speed, short splashP)
 {
     Crocodile croc;
     croc.x = x;
     croc.y = y;
     croc.direction = direction;
     croc.speed = speed;
-    croc.splash = splash;
+    croc.splash = -10;
+    if(splashP)
+    {
+        short prob = rand() % splashP;
+        if(prob == 0)
+        {
+            short min = ((CROCODILE_COLUMNS) + 5) * speed;
+            short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP) - 5) * speed ;
+            croc.splash = randomNumber(min, max);
+        }
+    }
     return croc;
 }
 
 void randomSeed()
 {
-    __pid_t pid = getpid();
+    pid_t pid = getpid();
 
     struct timespec CurrentTime;
 
@@ -338,7 +305,7 @@ short randomNumber(short min, short max)
 
 short spawnCrocodile(int crocToMain[], Crocodile croc)
 {
-    __pid_t pid = fork();
+    pid_t pid = fork();
 
     if(pid == 0)
     {
@@ -379,4 +346,54 @@ short crocodileSpace()
     short min = (short) CROC_SPACE_MIN;
     short max = (short) CROC_SPACE_MAX;
     return randomNumber(min, max);
+}
+
+void newCrocodileScene(int crocToMain[], short directions[], short speeds[], short spawnTimers[], GameRules *rules)
+{
+    for(short i = 1; i < RIVER_ROWS; i++)
+    {
+        if(directions[i-1]) // se e' 1
+            directions[i] = 0;
+        else
+            directions[i] = 1;
+    }
+    
+    for(int i = 0; i < RIVER_ROWS; i++)
+    {
+        if(directions[i]) // se la direzione e' destra
+        { 
+            short min = COLUMNS_PER_MAP - (COLUMNS_PER_BLOCK * 5);
+            short max = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK;
+            short currentX = randomNumber(min, max);
+            
+            spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+
+            do{
+                currentX -= crocodileSpace(); // spazio tra un coccodrillo e l'altro
+                currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
+                spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+            } while( currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK);
+
+            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - currentX) * speeds[i];
+        }
+        else // se la direzione e' sinistra
+        {   
+            short min = COLUMNS_PER_BLOCK;
+            short max = COLUMNS_PER_BLOCK * 5;
+            short currentX = randomNumber(min, max);
+            
+            spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+
+            do{
+                currentX += crocodileSpace(); // spazio tra un coccodrillo e l'altro
+                currentX += CROCODILE_COLUMNS; // la x e' la prima colonna
+                spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+            } while( currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK));
+
+            currentX += CROCODILE_COLUMNS;
+
+            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - (COLUMNS_PER_MAP - currentX)) * speeds[i];
+        }
+
+    }
 }

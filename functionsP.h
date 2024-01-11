@@ -67,3 +67,6 @@ void riverSpeeds(short speeds[], short rulesSpeed);
 
 // Funzione per generare randomicamente lo spazio tra due coccodrilli.
 short crocodileSpace();
+
+// Funzione per generare una nuova scena (posizioni coccodrilli) all'inizio di una manche.
+void newCrocodileScene(int crocToMain[], short directions[], short speeds[], short spawnTimers[], GameRules *rules);

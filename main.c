@@ -17,17 +17,13 @@ void game(GameRules *rules, GameUpdates *thisGame);
 
 int main()
 {  
-    setlocale(LC_ALL, "");
+    setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
 
-    // ... 
-
-    GameRules regole = getRules(EASY);
+    GameRules regole = getRules(MEDIUM);
     GameUpdates thisGame; thisGame.lives = LIVES; thisGame.score = 0;
-
 
     game(&regole, &thisGame);
     
-
     return 0;
 }
 
@@ -43,7 +39,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
 
-    __pid_t croc = fork();
+    pid_t croc = fork();
 
     if(croc == 0)
     {
@@ -57,7 +53,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
         keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
         mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-        __pid_t frog = fork();
+        pid_t frog = fork();
 
         if(frog == 0)
         {
