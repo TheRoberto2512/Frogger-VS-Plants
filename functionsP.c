@@ -16,7 +16,7 @@
 *  FUNZIONI PROCESSI  *
 \*********************/
 
-void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
+void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[])
 {
     Frog frogger;
     frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
@@ -78,7 +78,7 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
                     break;
 
                 case ' ': // generazione di un proietile
-                    write(FPHToMain[WRITE], &frogger, sizeof(frogger)); // comunichiamo la posizione corrente al processo che gestira' i proiettili
+                    write(frogToFPH[WRITE], &frogger, sizeof(frogger)); // comunichiamo la posizione corrente al processo che gestira' i proiettili
                     break;
             }
 
@@ -86,6 +86,65 @@ void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[])
                 write(frogToMain[WRITE], &frogger, sizeof(frogger));  // comunica le nuove coordinate
         } 
         usleep(FRAME_UPDATE); 
+    } while (true);
+}
+
+void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], short speed)
+{
+    Frog frogger; // per le letture dalla rana (la rana comunica le sue coordinate)
+    short updatesCounter = 0; 
+    Projectile frogProjectiles[MAX_FROG_PROJ]; Projectile readed;
+    bool doProjectileExist[MAX_FROG_PROJ];
+
+    for(short i = 0; i < MAX_FROG_PROJ; i++)
+        doProjectileExist[i] = false;
+
+    ssize_t bytesR = -1;
+    do
+    {
+        bytesR = read(frogToFPH[READ], &frogger, sizeof(Frog));
+
+        if(bytesR > -1)
+        {
+            for(short i = 0; i < MAX_FROG_PROJ; i++)
+            {
+                if(doProjectileExist[i] == false)
+                {
+                    doProjectileExist[i] = true;
+
+                    frogProjectiles[i].source = 0;          // perche' e' la rana
+                    frogProjectiles[i].ID = i;              // salviamo un ID provvisorio
+                    frogProjectiles[i].x = frogger.x + 3;
+                    frogProjectiles[i].y = frogger.y -1;
+                    frogProjectiles[i].speed = speed;
+                }
+            }
+        }
+
+        do{
+            bytesR = read(mainToFPH[READ], &readed, sizeof(Projectile));
+            if(bytesR > -1)
+            {
+                frogProjectiles[readed.ID] = readed;
+            }
+        } while (bytesR > -1);
+
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            if(doProjectileExist[i])
+            {
+                if(updatesCounter % speed == 0)
+                {
+                    frogProjectiles[i].y -= 1;
+                    if(frogProjectiles[i].y < 3)
+                        doProjectileExist[i] = false; // smette di esistere
+                    else
+                        write(FPHToMain[WRITE], frogProjectiles[i], sizeof(Projectile));
+                }
+                
+            }
+        }
+
     } while (true);
 }
 
@@ -277,7 +336,7 @@ Crocodile buildCrocodile(short x, short y, short direction, short speed, short s
         if(prob == 0)
         {
             short min = ((CROCODILE_COLUMNS) + 5) * speed;
-            short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP) - 5) * speed ;
+            short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * speed ;
             croc.splash = randomNumber(min, max);
         }
     }

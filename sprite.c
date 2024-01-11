@@ -497,4 +497,15 @@ void customBorder(short x, short y, short top, short side, bool separator)
 
     refresh();
 }
+
+void printProjectile(short x, short y, bool Fromfrog)
+{
+    CHANGE_COLOR(stdscr, PROIETTILI);
+
+    if(Fromfrog)
+        mvprintw(y, x, " ");
+    else
+        mvprintw(y, x, "█");
+}
+
 // ▀ █ ▄

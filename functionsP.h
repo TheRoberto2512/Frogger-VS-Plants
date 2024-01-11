@@ -25,10 +25,10 @@
 \*********************/
 
 // Processo che gestisce la rana.
-void frogHandler(int frogToMain[], int mainToFrog[], int FPHToMain[]);
+void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[]);
 
 // Processo che gestisce i proiettili generati dalla rana.
-void frogProjectilesHandler(int frogProjPipe[], int killProjPipe[]);
+void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], short speed);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
 void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[]);

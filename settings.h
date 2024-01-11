@@ -36,6 +36,9 @@ typedef struct gameUpdates
 // Costante per definire il numero di secondi della barra.
 #define FULL_TIME 30
 
+// Costante per definire il numero di proiettili simultanei della rana.
+#define MAX_FROG_PROJ 5
+
 // Funzione che restituisce le impostazioni in base alla difficolta'.
 GameRules getRules(short difficult);
 

@@ -74,5 +74,9 @@ void istanziaColori()
     inizializzaColore(DEFAULT_BG, 23, 20, 33);
     inizializzaColore(DEFAULT_FG, 208, 207, 204);
     init_pair(DEFAULT, DEFAULT_FG, DEFAULT_BG);
+
+    // per i proiettili
+    inizializzaColore(PURPLE_PROJ, 181, 29, 252);
+    init_pair(PROIETTILI, PETALI, PURPLE_PROJ); // per il proiettile della rana si stampa ' ', per quello dei nemici '█'
 }
 // initpair( NOME , FOREGROUND, BACKGROUND )

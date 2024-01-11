@@ -30,11 +30,13 @@ int main()
 void game(GameRules *rules, GameUpdates *thisGame)
 {
     int status; // servira' dopo per la waitpid()
+
     // pipes
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
-    int FPHToMain[2];  pipe(FPHToMain);  fcntl(FPHToMain[READ], F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
-    int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ], F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
+    int frogToFPH[2];  pipe(frogToFPH);  fcntl(frogToFPH[READ],  F_SETFL, O_NONBLOCK);
+    int FPHToMain[2];  pipe(FPHToMain);  fcntl(FPHToMain[READ],  F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
+    int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ],  F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
 
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
@@ -61,7 +63,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
             close(frogToMain[READ]);  // pipe dove scrive le coordinate
             close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
             close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
-            frogHandler(frogToMain, mainToFrog, FPHToMain);
+            frogHandler(frogToMain, mainToFrog, frogToFPH);
         }
         else if(frog > 0)
         {

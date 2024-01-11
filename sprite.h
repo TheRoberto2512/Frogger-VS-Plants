@@ -96,3 +96,6 @@ void printBGCrocodile(short x, short y, short direction);
 
 // Stampa un bordo custom.
 void customBorder(short x, short y, short top, short side, bool separator);
+
+// Stampa un proiettile.
+void printProjectile(short x, short y, bool Fromfrog);

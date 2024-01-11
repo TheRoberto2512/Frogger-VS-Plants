@@ -84,6 +84,8 @@ void istanziaColori();
 // Colore di default per background.
 #define DEFAULT_BG 28
 
+// Colore per il proiettile della rana.
+#define PURPLE_PROJ 29
 
 /********************\
 *  COPPIE DI COLORI  *
@@ -157,3 +159,6 @@ void istanziaColori();
 
 // Colore di default (utile per i bordi).
 #define DEFAULT 32
+
+// Coppia di colori per i proiettili
+#define PROIETTILI 33
