@@ -89,14 +89,14 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[])
     } while (true);
 }
 
-void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], short speed)
+void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], short speed)
 {
     Frog frogger; // per le letture dalla rana (la rana comunica le sue coordinate)
     short updatesCounter = 0; 
     Projectile frogProjectiles[MAX_FROG_PROJ]; Projectile readed;
     bool doProjectileExist[MAX_FROG_PROJ];
 
-    for(short i = 0; i < MAX_FROG_PROJ; i++)
+    for(short i = 0; i < MAX_FROG_PROJ; i++)    // operazione preliminare per assicurarci siano tutti impostati a false
         doProjectileExist[i] = false;
 
     ssize_t bytesR = -1;
@@ -104,6 +104,7 @@ void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], s
     {
         bytesR = read(frogToFPH[READ], &frogger, sizeof(Frog));
 
+        // SE LA RANA HA CHIESTO DI GENERARE UN PROIETTILE
         if(bytesR > -1)
         {
             for(short i = 0; i < MAX_FROG_PROJ; i++)
@@ -112,7 +113,7 @@ void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], s
                 {
                     doProjectileExist[i] = true;
 
-                    frogProjectiles[i].source = 0;          // perche' e' la rana
+                    frogProjectiles[i].source = 0;          // perche' e' la rana (i proiettili nemici useranno 1-2-3)
                     frogProjectiles[i].ID = i;              // salviamo un ID provvisorio
                     frogProjectiles[i].x = frogger.x + 3;
                     frogProjectiles[i].y = frogger.y -1;
@@ -122,14 +123,17 @@ void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], s
             }
         }
 
+        // LEGGE DAL MAIN PER CONTROLLARE SE QUALCHE PROIETTILE E' ENTRATO IN COLLISIONE (E QUINDI SCOMPARSO)
         do{
-            bytesR = read(mainToFPH[READ], &readed, sizeof(Projectile));
+            short justRead;
+            bytesR = read(mainToFPH[READ], &justRead, sizeof(justRead));
             if(bytesR > -1)
             {
-                frogProjectiles[readed.ID] = readed;
+                doProjectileExist[justRead] = false;
             }
         } while (bytesR > -1);
 
+        // FA AVANZARE I PROIETTILI IN BASE ALLA LORO VELOCITA' E COMUNICA LE NUOVE COORDINATE
         for(short i = 0; i < MAX_FROG_PROJ; i++)
         {
             if(doProjectileExist[i])
@@ -140,7 +144,7 @@ void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], s
                     if(frogProjectiles[i].y < 3)
                         doProjectileExist[i] = false; // smette di esistere
                     else
-                        write(FPHToMain[WRITE], &frogProjectiles[i], sizeof(Projectile));
+                        write(PHToMain[WRITE], &frogProjectiles[i], sizeof(Projectile));
                 }
             }
         }
@@ -150,12 +154,12 @@ void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], s
     } while (true);
 }
 
-void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int FPHToMain[], int mainToFPH[])
+void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[])
 {
     Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e il coccodrillo appena letto
-    short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
+    short fps = 0, seconds = 0;                      // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
     short minRow = ROWS_PER_MAP - 1;
-
+    ssize_t bytes_read = -1;
     Projectile frogPrjs[MAX_FROG_PROJ]; Projectile readed;
     bool printProj[MAX_FROG_PROJ];
 
@@ -165,9 +169,9 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     bool tane[5] = {true, true, true, true, true};
 
     do{
-        ssize_t bytes = -1;
-        bytes = read(frogToMain[READ], &frogger, sizeof(frogger)); // prima lettura della rana
-        if(bytes != -1 && frogger.y < minRow)
+        // LEGGE LA POSIZIONE DELLA RANA
+        bytes_read = read(frogToMain[READ], &frogger, sizeof(frogger)); // read(...) restituisce il numero di byte letti (-1 se non legge nulla)
+        if(bytes_read != -1 && frogger.y < minRow)
         {
             minRow = frogger.y;
             currentGame->score += ROW_UP;
@@ -175,34 +179,55 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 
         if(fps < 3 && seconds == 0) // evita casi di schermo che non si aggiorna 
         {
-            clear();
-            customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + 4, true);
+            clear(); customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + 4, true);
         }                        
         
         printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
         printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);                            // stampa la mappa
 
-        ssize_t bytes_read = -1;
-        do{
-            bytes_read = read(crocToMain[READ], &croc, sizeof(croc)); // read(...) restituisce il numero di byte letti (-1 se non legge nulla) 
-            if(bytes_read != -1)
-            {
-                Update(&cList, reverseComputeY(croc.y), croc, fps);
-            }
-        } while (bytes_read != -1);             // finche' c'e' da leggere legge
-        DeleteUnnecessary(&cList, fps);         // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
-        printList(&cList);                      // stampa i coccodrilli
-
+        // LEGGE TUTTI I COCCODRILLI
         bytes_read = -1;
         do{
-            bytes_read = read(FPHToMain[READ], &readed, sizeof(Projectile));
+            bytes_read = read(crocToMain[READ], &croc, sizeof(croc));  
+            if(bytes_read != -1)
+                Update(&cList, reverseComputeY(croc.y), croc, fps);
+        } while (bytes_read != -1);             
+        DeleteUnnecessary(&cList, fps); // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
+        printList(&cList);              // stampa i coccodrilli
+
+        // LEGGE TUTTI I PROIETTILI
+        bytes_read = -1;
+        do{
+            bytes_read = read(PHToMain[READ], &readed, sizeof(Projectile));
             if(bytes_read != -1)
             {
-                frogPrjs[readed.ID] = readed;
-                printProj[readed.ID] = true;
+                if(readed.source == 0) // se proviene dalla rana
+                {
+                    frogPrjs[readed.ID] = readed;
+                    printProj[readed.ID] = true;
+                }
+                else // se proviene da una pianta
+                {
+                    // . . .
+                }
             }
         } while (bytes_read != -1);
 
+        /* TEST PER IL DE-SPAWN DEI PROIETTILI RAN
+        for(short p = 0; p < MAX_FROG_PROJ; p++)
+        {
+            if(printProj[p])
+            {
+                if(frogPrjs[p].y == 15)
+                {
+                    write(mainToFPH[WRITE], &frogPrjs[p].ID, sizeof(frogPrjs[p].ID));
+                    printProj[p] = false;
+                }
+            }
+        }
+        */
+
+        // STAMPA TUTTI I PROIETTILI (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
         {
             if(printProj[p])
@@ -214,6 +239,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         }
 
+        // STAMPA LA RANA (ED EVENTUALMENTE LE SUE COORDINATE PER IL DEBUG)
         printFrog(frogger.x, frogger.y);
         if(FROG_DEBUG)                          // stampa le coordinate della rana (utile per il debug)
         {
@@ -222,18 +248,15 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y);
         }
         
-        refresh(); // visualizza l'interfaccia aggiornata
-
-        fps++;
-        if(fps != 0 && fps % 30 == 0) // ogni 30 update passa un secondo
+        refresh(); fps++;               // aggiorna e incrementa fps        
+        if(fps != 0 && fps % 30 == 0)   // ogni 30 update passa un secondo
             seconds++;
+        usleep(FRAME_UPDATE);           // riposa
 
-        usleep(FRAME_UPDATE);  // riposa
-
+        // SE IL TEMPO E' SCADUTO
         if((rules->time-seconds) <= -1)
         {
-            currentGame->lives = currentGame->lives - 1;
-            break;
+            currentGame->lives = currentGame->lives - 1; break;
         }
 
     } while(true);

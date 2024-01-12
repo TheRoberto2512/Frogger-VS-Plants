@@ -28,10 +28,10 @@
 void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[]);
 
 // Processo che gestisce i proiettili generati dalla rana.
-void frogProjectilesHandler(int frogToFPH[], int FPHToMain[], int mainToFPH[], short speed);
+void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], short speed);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int FPHToMain[], int mainToFPH[]);
+void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
 void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);

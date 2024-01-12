@@ -35,7 +35,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
     int frogToFPH[2];  pipe(frogToFPH);  fcntl(frogToFPH[READ],  F_SETFL, O_NONBLOCK);
-    int FPHToMain[2];  pipe(FPHToMain);  fcntl(FPHToMain[READ],  F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
+    int PHToMain[2];  pipe(PHToMain);  fcntl(PHToMain[READ],  F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
     int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ],  F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
 
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
@@ -53,8 +53,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
         if(frogPRJH == 0)
         {
-            frogProjectilesHandler(frogToFPH, FPHToMain, mainToFPH, rules->speed);
-            //usleep(60 * 1000 * 10000);
+            frogProjectilesHandler(frogToFPH, PHToMain, mainToFPH, rules->speed);
         }
         else
         {
@@ -71,14 +70,14 @@ void game(GameRules *rules, GameUpdates *thisGame)
                 
                 close(frogToMain[READ]);  // pipe dove scrive le coordinate
                 close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-                close(FPHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
+                close(PHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
                 frogHandler(frogToMain, mainToFrog, frogToFPH);
             }
             else if(frog > 0)
             {
                 close(frogToMain[WRITE]);
                 close(mainToFrog[READ]);
-                mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, FPHToMain, mainToFPH);
+                mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH);
 
                 endwin();
                 kill(frog, SIGTERM);        // uccide la rana
