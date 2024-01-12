@@ -39,6 +39,8 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
 // Processo che gestisce un singolo coccodrillo.
 void singleCrocodileHandler(int crocToMain[], Crocodile me);
 
+// Processo che 
+
 
 /*********************\
 *  FUNZIONI UTILITA'  *

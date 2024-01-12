@@ -1,25 +1,23 @@
 CFLAGS = -g -c
+LIBS = -lncursesw
 
-all: main.o colors.o sprite.o crocList.o functionsP.o settings.o
-	gcc -g main.o sprite.o colors.o crocList.o functionsP.o settings.o -o game -lncursesw
+all: main.c colors.o sprite.o crocList.o functionsP.o settings.o
+	gcc -g main.c sprite.o colors.o crocList.o functionsP.o settings.o $(LIBS) -o game 
 
-main.o: main.c
-	gcc $(CFLAGS) main.c 
-
-functionsP.o: functionsP.c functionsP.h
+functionsP.o: functionsP.c functionsP.h settings.o crocList.o sprite.o structs.h
 	gcc $(CFLAGS) functionsP.c
 
-crocList.o: crocList.c crocList.h 
+crocList.o: crocList.c crocList.h sprite.o structs.h
 	gcc $(CFLAGS) crocList.c
 
 settings.o: settings.c settings.h
-	gcc $(CFLAGS) settings.c
+	gcc $(CFLAGS) settings.c $(LIBS)
 
-sprite.o: sprite.c sprite.h
-	gcc $(CFLAGS) sprite.c
+sprite.o: sprite.c sprite.h colors.o
+	gcc $(CFLAGS) sprite.c $(LIBS)
 
 colors.o: colors.c colors.h
-	gcc $(CFLAGS) colors.c 
+	gcc $(CFLAGS) colors.c $(LIBS)
 
 clean:
 	rm -f *.o *.gch game
