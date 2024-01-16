@@ -24,6 +24,8 @@ typedef struct crocodile
 #define ENEMY_GUARD
 typedef struct enemy
 {
+    pid_t PID;          // pid del processo nemico
+    short ID;           // numero del nemico
     short x;            // coordinata x
     short y;            // coordinata y
     short shot;         // conto alla rovescia prima di sparare un proiettile
@@ -34,7 +36,7 @@ typedef struct enemy
 #define PROJ_GUARD
 typedef struct projectile
 {
-    short source;       // sorgente (0 per la rana, 1-2-3 per i nemici)
+    pid_t source;       // sorgente (0 per la rana, 1-2-3 per i nemici)
     short ID;           // identificatore del proiettile
     short x;            // coordinata x
     short y;            // coordinata y

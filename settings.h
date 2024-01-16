@@ -21,6 +21,11 @@ typedef struct gameUpdates
 } GameUpdates;
 #endif
 
+
+/***************************\
+*  COSTANTI DI GIOCO MISTE  *
+\***************************/
+
 // Costante per riferirisi alla difficolta' facile.
 #define LIVES 3
 
@@ -38,6 +43,9 @@ typedef struct gameUpdates
 
 // Costante per definire il numero di proiettili simultanei della rana.
 #define MAX_FROG_PROJ 5
+
+// Costante per definire il numero di proiettili simultanei della rana.
+#define MAX_ENEMIES 15
 
 // Funzione che restituisce le impostazioni in base alla difficolta'.
 GameRules getRules(short difficult);

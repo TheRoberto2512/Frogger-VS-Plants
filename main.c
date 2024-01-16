@@ -35,11 +35,14 @@ void game(GameRules *rules, GameUpdates *thisGame)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
     int frogToFPH[2];  pipe(frogToFPH);  fcntl(frogToFPH[READ],  F_SETFL, O_NONBLOCK);
-    int PHToMain[2];  pipe(PHToMain);  fcntl(PHToMain[READ],  F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
+    int PHToMain[2];   pipe(PHToMain);   fcntl(PHToMain[READ],   F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
     int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ],  F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
 
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
+
+    int enHToMain[2]; pipe(enHToMain); fcntl(enHToMain[READ], F_SETFL, O_NONBLOCK); // enemiesHandler comunica al main
+    int mainToEnH[2]; pipe(mainToEnH); fcntl(mainToEnH[READ], F_SETFL, O_NONBLOCK); // main comunica all'enemiesHandler
 
     pid_t croc = fork();
 
@@ -57,32 +60,43 @@ void game(GameRules *rules, GameUpdates *thisGame)
         }
         else
         {
-            initscr(); noecho(); curs_set(0);
-            start_color(); istanziaColori(); cbreak();
-            nodelay(stdscr, TRUE); // nessun delay per la getch()
-            keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
-            mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-            pid_t frog = fork();
+            pid_t enH = fork();
 
-            if(frog == 0)
+            if(enH == 0)
             {
-                
-                close(frogToMain[READ]);  // pipe dove scrive le coordinate
-                close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-                close(PHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
-                frogHandler(frogToMain, mainToFrog, frogToFPH);
+                enemiesHandler(enHToMain, mainToEnH);
             }
-            else if(frog > 0)
+            else
             {
-                close(frogToMain[WRITE]);
-                close(mainToFrog[READ]);
-                mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH);
+                initscr(); noecho(); curs_set(0);
+                start_color(); istanziaColori(); cbreak();
+                nodelay(stdscr, TRUE); // nessun delay per la getch()
+                keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
+                mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-                endwin();
-                kill(frog, SIGTERM);        // uccide la rana
-                waitpid(frog, &status, 0); 
+                pid_t frog = fork();
+
+                if(frog == 0)
+                {
+                    
+                    close(frogToMain[READ]);  // pipe dove scrive le coordinate
+                    close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
+                    close(PHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
+                    frogHandler(frogToMain, mainToFrog, frogToFPH);
+                }
+                else if(frog > 0)
+                {
+                    close(frogToMain[WRITE]);
+                    close(mainToFrog[READ]);
+                    mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
+
+                    endwin();
+                    kill(frog, SIGTERM);        // uccide la rana
+                    waitpid(frog, &status, 0); 
+                }
             }
+
         }
     }
 

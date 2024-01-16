@@ -10,6 +10,7 @@
 #include "structs.h"
 #include "settings.h"
 #include "crocList.h"
+#include "collisionDetector.h"
 
 
 /*********************\
@@ -60,9 +61,9 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[])
                 case KEY_UP:
                     update = true;
                     frogger.y -= ROWS_PER_BLOCK;
-                    if(frogger.y < 4)
+                    if(frogger.y < SCOREBOARD_ROWS)
                     {
-                        frogger.y = 4;
+                        frogger.y = SCOREBOARD_ROWS;
                     }
                     break;
 
@@ -100,8 +101,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
         doProjectileExist[i] = false;
 
     ssize_t bytesR = -1;
-    do
-    {
+    do{
         bytesR = read(frogToFPH[READ], &frogger, sizeof(Frog));
 
         // SE LA RANA HA CHIESTO DI GENERARE UN PROIETTILE
@@ -116,7 +116,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
                     frogProjectiles[i].source = 0;          // perche' e' la rana (i proiettili nemici useranno 1-2-3)
                     frogProjectiles[i].ID = i;              // salviamo un ID provvisorio
                     frogProjectiles[i].x = frogger.x + 3;
-                    frogProjectiles[i].y = frogger.y -1;
+                    frogProjectiles[i].y = frogger.y - 1;
                     frogProjectiles[i].speed = speed;
                     break;
                 }
@@ -154,10 +154,11 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
     } while (true);
 }
 
-void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[])
+void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
 {
     Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e il coccodrillo appena letto
-    short fps = 0, seconds = 0;                      // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
+    Enemy allEnemies[MAX_ENEMIES]; Enemy en;
+    short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
     short minRow = ROWS_PER_MAP - 1;
     ssize_t bytes_read = -1;
     Projectile frogPrjs[MAX_FROG_PROJ]; Projectile readed;
@@ -167,6 +168,9 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         cList.lanes[i] = NULL;
 
     bool tane[5] = {true, true, true, true, true};
+
+    for(short p = 0; p < MAX_FROG_PROJ; p++)
+        printProj[p] = false;
 
     do{
         // LEGGE LA POSIZIONE DELLA RANA
@@ -179,9 +183,10 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 
         if(fps < 3 && seconds == 0) // evita casi di schermo che non si aggiorna 
         {
-            clear(); customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + 4, true);
+            clear(); customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);
         }                        
         
+        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);
         printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
         printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);                            // stampa la mappa
 
@@ -194,6 +199,16 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         } while (bytes_read != -1);             
         DeleteUnnecessary(&cList, fps); // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
         printList(&cList);              // stampa i coccodrilli
+
+        // LEGGE TUTTI I NEMICI
+        bytes_read = -1;
+        do{
+            bytes_read = read(enHToMain[READ], &en, sizeof(Enemy));
+            if(bytes_read != -1)
+            {
+                allEnemies[en.ID] = en;
+            }
+        } while (bytes_read != -1); 
 
         // LEGGE TUTTI I PROIETTILI
         bytes_read = -1;
@@ -213,7 +228,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         } while (bytes_read != -1);
 
-        /* TEST PER IL DE-SPAWN DEI PROIETTILI RAN
+        /* TEST PER IL DE-SPAWN DEI PROIETTILI RANA
         for(short p = 0; p < MAX_FROG_PROJ; p++)
         {
             if(printProj[p])
@@ -224,8 +239,13 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                     printProj[p] = false;
                 }
             }
+        } */
+        
+        // STAMPA TUTTI I NEMICI
+        for(short e = 0; e < MAX_ENEMIES; e++)
+        {
+            printEnemy(allEnemies[e].x, allEnemies[e].y, 0);
         }
-        */
 
         // STAMPA TUTTI I PROIETTILI (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
@@ -243,9 +263,12 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         printFrog(frogger.x, frogger.y);
         if(FROG_DEBUG)                          // stampa le coordinate della rana (utile per il debug)
         {
-            customBorder(COLUMNS_PER_MAP+4, 0, 11, 3, false);
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, 0, 11, 3, false);
             CHANGE_COLOR(DEFAULT);
             mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y);
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, 5, 11, MAX_ENEMIES+2, false);
+            for(short s = 0; s < MAX_ENEMIES; s++)
+                mvprintw(5+1+s, COLUMNS_PER_MAP+5, "%03d : %03d", allEnemies[s].x, allEnemies[s].y);
         }
         
         refresh(); fps++;               // aggiorna e incrementa fps        
@@ -352,6 +375,50 @@ void singleCrocodileHandler(int crocToMain[], Crocodile me)
     exit(0);
 }
 
+void enemiesHandler(int enHToMain[], int mainToEnH[])
+{
+    Enemy allEnemies[MAX_ENEMIES];      // salva tutti i nemici correnti
+    bool aliveEnemies[MAX_ENEMIES];     // true quando il nemico corrispondente e' vivo
+    short rowsY[RIVERSIDE_ROWS];        // salva le coordinate Y delle righe
+
+    // OPERAZIONI PRELIMINARI
+    rowsY[0] = (LILY_PADS_ROWS * ROWS_PER_BLOCK) + SCOREBOARD_ROWS;
+    for(short r = 1; r < RIVERSIDE_ROWS; r++)
+    {   
+        rowsY[r] = rowsY[r-1] + ROWS_PER_BLOCK;
+    }
+
+    // GENERA I NEMICI
+    for(short i = 0; i < MAX_ENEMIES;)
+    {
+        allEnemies[i].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+        allEnemies[i].y = rowsY[rand() % RIVERSIDE_ROWS];
+        allEnemies[i].shot = 10000;
+        allEnemies[i].ID = i;
+
+        bool collided = false;
+        for(short c = 0; c < i; c++)
+        {
+            collided = enemyEnemyCD(allEnemies[i].x, allEnemies[i].y, allEnemies[c].x, allEnemies[c].y);
+            if(collided)
+            break;
+        }
+
+        if(collided == false)
+            i++;
+    }
+
+    // COMUNICA I NEMICI AL MANAGER
+    for(short k = 0; k < MAX_ENEMIES; k++)
+        write(enHToMain[WRITE], &allEnemies[k], sizeof(Enemy));
+
+
+    do{
+        
+
+        usleep(FRAME_UPDATE);
+    } while(true);
+}
 
 /*********************\
 *  FUNZIONI UTILITA'  *

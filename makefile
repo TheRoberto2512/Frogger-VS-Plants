@@ -1,14 +1,17 @@
 CFLAGS = -g -c
 LIBS = -lncursesw
 
-all: main.c colors.o sprite.o crocList.o functionsP.o settings.o
-	gcc -g main.c sprite.o colors.o crocList.o functionsP.o settings.o $(LIBS) -o game 
+all: main.c colors.o sprite.o crocList.o functionsP.o settings.o collisionDetector.o
+	gcc -g main.c sprite.o colors.o crocList.o functionsP.o settings.o collisionDetector.o $(LIBS) -o game 
 
-functionsP.o: functionsP.c functionsP.h settings.o crocList.o sprite.o structs.h
+functionsP.o: functionsP.c functionsP.h settings.o crocList.o sprite.o structs.h collisionDetector.o
 	gcc $(CFLAGS) functionsP.c
 
 crocList.o: crocList.c crocList.h sprite.o structs.h
 	gcc $(CFLAGS) crocList.c
+
+collisionDetector.o: collisionDetector.c collisionDetector.h sprite.o
+	gcc $(CFLAGS) collisionDetector.c $(LIBS)
 
 settings.o: settings.c settings.h
 	gcc $(CFLAGS) settings.c $(LIBS)

@@ -5,6 +5,46 @@
 #include "sprite.h"
 #include "colors.h"
 
+
+/**********************\
+*  FUNZIONI PER MAPPA  *
+\**********************/
+
+void customBorder(short x, short y, short top, short side, bool separator)
+{
+    CHANGE_COLOR(DEFAULT); move(y, x);
+    printw("%lc", L'┌'); 
+    for(short i = 0; i < top - 2; i++)
+    {
+        printw("%lc", L'─');
+    }
+    printw("%lc", L'┐'); move(y+1, x);
+    for (short i = 0; i < side - 2; i++)
+    {
+        printw("%lc", L'│');
+        move(y+1+i, x+top-1);
+        printw("%lc", L'│');
+        move(y+2+i, x);
+    }
+    printw("%lc", L'└');
+    for(short i = 0; i < top - 2; i++)
+    {
+        printw("%lc", L'─');
+    }
+    printw("%lc", L'┘');
+
+    if(separator)
+    {
+        move(y+2, x); printw("%lc", L'├');
+        for(short i = 0; i < top - 2; i++)
+        {
+            printw("%lc", L'─');
+        } printw("%lc", L'┤');
+    }
+
+    refresh();
+}
+
 void printScoreBoard(short lives, short score, short time, short fullTime)
 {
     CHANGE_COLOR(DEFAULT);
@@ -120,38 +160,6 @@ void printMap(bool bottom, bool lilyPads[], bool newBG)
         printGroundLine(x, y);
 }
 
-void printLilyPads(short x, short y, bool lilyPads[], short crocX, short direction)
-{
-    double r = BLOCK_PER_MAP_ROWS / 5;
-    static short coords[5] = { -1, -1, -1, -1, -1};
-
-    if(coords[0] == -1)
-        for(short i = 0; i < 5; i++)
-        {
-            coords[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
-        }
-    
-    printRiverLine(x, y);
-    if(crocX != -500)
-    {
-        printBGCrocodile(crocX, 3, direction);
-    }
-    
-    CHANGE_COLOR(PRATO);
-    for(short j = 0; j < COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS; j++)
-    {
-        mvprintw(y + ROWS_PER_BLOCK, x+j, " ");
-    }
-
-    for(short i = 0; i < 5; i++)
-    {
-        printSingleLilyPad(coords[i], y, lilyPads[i]);
-        CHANGE_COLOR(PRATO_E_ACQUA);
-        for(short z = 0; z < 11; z++)
-            mvprintw(y + ROWS_PER_BLOCK, coords[i]-1+z, "▄");
-    }
-}
-
 void printGroundLine(short x, short y)
 {
     short startX = x;
@@ -182,6 +190,38 @@ void printRiverLine(short x, short y)
         y++;
         x = startX;
     } 
+}
+
+void printLilyPads(short x, short y, bool lilyPads[], short crocX, short direction)
+{
+    double r = BLOCK_PER_MAP_ROWS / 5;
+    static short coords[5] = { -1, -1, -1, -1, -1};
+
+    if(coords[0] == -1)
+        for(short i = 0; i < 5; i++)
+        {
+            coords[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
+        }
+    
+    printRiverLine(x, y);
+    if(crocX != -500)
+    {
+        printBGCrocodile(crocX, 3, direction);
+    }
+    
+    CHANGE_COLOR(PRATO);
+    for(short j = 0; j < COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS; j++)
+    {
+        mvprintw(y + ROWS_PER_BLOCK, x+j, " ");
+    }
+
+    for(short i = 0; i < 5; i++)
+    {
+        printSingleLilyPad(coords[i], y, lilyPads[i]);
+        CHANGE_COLOR(PRATO_E_ACQUA);
+        for(short z = 0; z < 11; z++)
+            mvprintw(y + ROWS_PER_BLOCK, coords[i]-1+z, "▄");
+    }
 }
 
 void printSingleLilyPad(short x, short y, bool empty)
@@ -237,6 +277,11 @@ void printSingleLilyPad(short x, short y, bool empty)
         }
     }
 }
+
+
+/************************\
+*  FUNZIONI PER ENTITA'  *
+\************************/
 
 void printCrocodile(short x, short y, short direction)
 {
@@ -332,14 +377,15 @@ void printBadCrocodile(short x, short y, short direction)
         }
 }
 
-void printEnemy(short x, short y)
+void printEnemy(short x, short y, short genTime)
 {
+    // FULL ENEMY
     wchar_t sprite[ROWS_PER_BLOCK][ENEMY_COLUMNS] =
     {
         { L'█', L'▄', L'▄', L'▄', L'▄', L'▄', L'█' },
         { L'n', L'█', L'▸', L'•', L'◂', L'█', L'n' },
         { L'n', L'n', L'▀', L'▀', L'▀', L'n', L'n' },
-        { L'n', L'n', L'▄', L'█', L'▄', L'n', L'n' },
+        { L'n', L'n', L'▄', L'█', L'▄', L'n', L'n' }
     };
 
     short colors[ROWS_PER_BLOCK][ENEMY_COLUMNS] =
@@ -350,16 +396,34 @@ void printEnemy(short x, short y)
         {              0,              0,   GAMBO_E_PRATO,  GAMBO_E_PRATO,   GAMBO_E_PRATO,              0,              0 }
     };
 
-    for(short i = 0; i < ROWS_PER_BLOCK; i++)
+    // HALF ENEMY
+    wchar_t halfSprite[ROWS_PER_BLOCK/2][ENEMY_COLUMNS] =
     {
-        for(short j = 0; j < ENEMY_COLUMNS; j++)
+        { L'n', L'n', L'n', L'█', L'n', L'n', L'n' },
+        { L'n', L'n', L'▄', L'█', L'▄', L'n', L'n' }
+    };
+
+    if(genTime)
+    {
+        CHANGE_COLOR(GAMBO_E_PRATO);
+        for(short i = 0; i < ROWS_PER_BLOCK/2; i++)
+            for(short j = 0; j < ENEMY_COLUMNS; j++)
+                if(halfSprite[i][j] != L'n')
+                    mvprintw(y+i+2, x+j, "%lc", halfSprite[i][j]);
+    }
+    else
+    {
+        for(short i = 0; i < ROWS_PER_BLOCK; i++)
         {
-            if(sprite[i][j] != L'n')
+            for(short j = 0; j < ENEMY_COLUMNS; j++)
             {
-                CHANGE_COLOR(colors[i][j]);
-                mvprintw(y+i, x+j, "%lc", sprite[i][j]);
+                if(sprite[i][j] != L'n')
+                {
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, x+j, "%lc", sprite[i][j]);
+                }
+                
             }
-            
         }
     }
 }
@@ -463,46 +527,11 @@ void printBGCrocodile(short x, short y, short direction)
     }
 }
 
-void customBorder(short x, short y, short top, short side, bool separator)
-{
-    CHANGE_COLOR(DEFAULT); move(y, x);
-    printw("%lc", L'┌'); 
-    for(short i = 0; i < top - 2; i++)
-    {
-        printw("%lc", L'─');
-    }
-    printw("%lc", L'┐'); move(y+1, x);
-    for (short i = 0; i < side - 2; i++)
-    {
-        printw("%lc", L'│');
-        move(y+1+i, x+top-1);
-        printw("%lc", L'│');
-        move(y+2+i, x);
-    }
-    printw("%lc", L'└');
-    for(short i = 0; i < top - 2; i++)
-    {
-        printw("%lc", L'─');
-    }
-    printw("%lc", L'┘');
-
-    if(separator)
-    {
-        move(y+2, x); printw("%lc", L'├');
-        for(short i = 0; i < top - 2; i++)
-        {
-            printw("%lc", L'─');
-        } printw("%lc", L'┤');
-    }
-
-    refresh();
-}
-
-void printProjectile(short x, short y, bool Fromfrog)
+void printProjectile(short x, short y, bool fromFrog)
 {
     CHANGE_COLOR(PROIETTILI);
 
-    if(Fromfrog)
+    if(fromFrog)
         mvprintw(y, x, " ");
     else
         mvprintw(y, x, "█");

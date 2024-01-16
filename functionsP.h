@@ -20,6 +20,7 @@
 #define CROC_SPACE_MIN ((short)(COLUMNS_PER_BLOCK * 2))
 #define CROC_SPACE_MAX ((short)(COLUMNS_PER_BLOCK * 4))
 
+
 /*********************\
 *  FUNZIONI PROCESSI  *
 \*********************/
@@ -31,7 +32,7 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[]);
 void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], short speed);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[]);
+void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
 void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
@@ -39,7 +40,14 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
 // Processo che gestisce un singolo coccodrillo.
 void singleCrocodileHandler(int crocToMain[], Crocodile me);
 
-// Processo che 
+// Processo che gestisce lo spawn (e la generazione) dei nemici.
+void enemiesHandler(int enHToMain[], int mainToEnH[]);
+
+// Processo che gestisce un singolo nemico.
+void singleEnemyHandler();
+
+// Processo che gestisce un singolo proiettile nemico.
+void singleEnemyProjectileHandler();
 
 
 /*********************\

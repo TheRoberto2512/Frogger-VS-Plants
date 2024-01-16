@@ -7,6 +7,9 @@
 \******************/
 
 // Numero di righe occupate dalle tane.
+#define SCOREBOARD_ROWS ((short)4)
+
+// Numero di righe occupate dalle tane.
 #define LILY_PADS_ROWS ((short)1)
 
 // Numero di righe oltre il fiume (tane escluse).
@@ -28,7 +31,7 @@
 #define ROWS_PER_SEPARATOR ((short)1)
 
 // Numero di "blocchi" (colonne) per ogni riga.
-#define BLOCK_PER_MAP_ROWS (15)
+#define BLOCK_PER_MAP_ROWS ((short)15)
 
 // Numero di caratteri per ogni riga.
 #define COLUMNS_PER_MAP ((short)(COLUMNS_PER_BLOCK * BLOCK_PER_MAP_ROWS))
@@ -57,9 +60,12 @@
 #define BC_CROC_COLUMNS (short)(19)
 
 
-/*************************\
-*  PROTOTIPI DI FUNZIONE  *
-\*************************/
+/*********************************\
+*  PROTOTIPI DI FUNZIONE (MAPPA)  *
+\*********************************/
+
+// Stampa un bordo custom.
+void customBorder(short x, short y, short top, short side, bool separator);
 
 // Stampa tutta la scoreboard nella finestra indicata.
 void printScoreBoard(short lives, short score, short time, short fullTime);
@@ -67,17 +73,22 @@ void printScoreBoard(short lives, short score, short time, short fullTime);
 // Stampa tutta la mappa nella finestra indicata. Gli ultimi due booleani servono rispettivamente per decidere se aggiornare o no anche la parte superiore della mappa (le tane) e la parte inferiore (il marciapiede).
 void printMap(bool bottom, bool lilyPads[], bool newBG);
 
+// Stampa una riga di terreno, usata per marciapiede e sponda (implementata dentro printMap).
+void printGroundLine(short x, short y);
+
+// Stampa una riga di fiume.
+void printRiverLine(short x, short y);
+
 // Stampa la riga contenene le tane della rana (implementata dentro printMap).
 void printLilyPads(short x, short y, bool lilyPads[], short crocX, short direction);
 
 // Stampa la una singola tana (implementata dentro printLilyPads).
 void printSingleLilyPad(short x, short y, bool empty);
 
-// Stampa una riga di terreno, usata per marciapiede e sponda (implementata dentro printMap).
-void printGroundLine(short x, short y);
 
-// Stampa una riga di fiume.
-void printRiverLine(short x, short y);
+/***********************************\
+*  PROTOTIPI DI FUNZIONE (ENTITA')  *
+\***********************************/
 
 // Stampa la rana.
 void printFrog(short x, short y);
@@ -89,13 +100,10 @@ void printCrocodile(short x, short y, short direction);
 void printBadCrocodile(short x, short y, short direction);
 
 // Stampa un fiore nemico.
-void printEnemy(short x, short y);
+void printEnemy(short x, short y, short genTime);
 
 // Stampa un coccodrillo di background sotto le tane.
 void printBGCrocodile(short x, short y, short direction);
 
-// Stampa un bordo custom.
-void customBorder(short x, short y, short top, short side, bool separator);
-
 // Stampa un proiettile.
-void printProjectile(short x, short y, bool Fromfrog);
+void printProjectile(short x, short y, bool fromFrog);
