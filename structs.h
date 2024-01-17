@@ -29,6 +29,7 @@ typedef struct enemy
     short x;            // coordinata x
     short y;            // coordinata y
     short shot;         // conto alla rovescia prima di sparare un proiettile
+    short genTime;      // conto alla rovescia prima di generarsi completamente
 } Enemy;
 #endif
 
@@ -36,7 +37,8 @@ typedef struct enemy
 #define PROJ_GUARD
 typedef struct projectile
 {
-    pid_t source;       // sorgente (0 per la rana, 1-2-3 per i nemici)
+    pid_t PID;          // sorgente (0 per la rana, wxyz per i nemici)
+    short FID;          // identificatore del padre
     short ID;           // identificatore del proiettile
     short x;            // coordinata x
     short y;            // coordinata y

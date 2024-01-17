@@ -17,8 +17,6 @@
 #define frogCrocodileCD(frogX, frogY, crocX, crocY) entityCollisionDetector(frogX, frogY, FROG_COLUMNS, crocX, crocY, CROCODILE_COLUMNS)
 
 
-
-
 /*************************\
 *  PROTOTIPI DI FUNZIONE  *
 \*************************/

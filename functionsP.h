@@ -9,8 +9,9 @@
 // Numero di microsecondi tra un update e l'altro.
 #define FRAME_UPDATE 33.333 * 1000
 
-// Da attivare per fare il debug della rana.
+// Costanti per stampare a video le coordinate di debug.
 #define FROG_DEBUG true
+#define ENEMIES_DEBUG true
 
 // Costanti per non confondere il comportamento delle pipe.
 #define READ 0
@@ -41,13 +42,13 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
 void singleCrocodileHandler(int crocToMain[], Crocodile me);
 
 // Processo che gestisce lo spawn (e la generazione) dei nemici.
-void enemiesHandler(int enHToMain[], int mainToEnH[]);
+void enemiesHandler(int enHToMain[], int mainToEnH[], int SEPHToMain[], short speed);
 
 // Processo che gestisce un singolo nemico.
-void singleEnemyHandler();
+void singleEnemyHandler(Enemy myself, int SEPHToMain[], short speed);
 
 // Processo che gestisce un singolo proiettile nemico.
-void singleEnemyProjectileHandler();
+void singleEnemyProjectileHandler(int SEPHToMain[], Projectile myself);
 
 
 /*********************\

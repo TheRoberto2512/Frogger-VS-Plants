@@ -31,18 +31,18 @@ void game(GameRules *rules, GameUpdates *thisGame)
 {
     int status; // servira' dopo per la waitpid()
 
-    // pipes
+    // PIPES (tutte impostate in modalita' non bloccante per la lettura)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
-    int frogToFPH[2];  pipe(frogToFPH);  fcntl(frogToFPH[READ],  F_SETFL, O_NONBLOCK);
-    int PHToMain[2];   pipe(PHToMain);   fcntl(PHToMain[READ],   F_SETFL, O_NONBLOCK);  // gestore proiettili rana comunica al main
-    int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ],  F_SETFL, O_NONBLOCK);  // main comunica al gestore proiettili rana 
+    int frogToFPH[2];  pipe(frogToFPH);  fcntl(frogToFPH[READ],  F_SETFL, O_NONBLOCK); // rana comunica al gestore proiettili
+    int PHToMain[2];   pipe(PHToMain);   fcntl(PHToMain[READ],   F_SETFL, O_NONBLOCK); // gestore proiettili comunica al main
+    int mainToFPH[2];  pipe(mainToFPH);  fcntl(mainToFPH[READ],  F_SETFL, O_NONBLOCK); // main comunica al gestore proiettili rana 
 
     int crocToMain[2]; pipe(crocToMain); fcntl(crocToMain[READ], F_SETFL, O_NONBLOCK); // coccodrillo comunica al main
     int mainToRivH[2]; pipe(mainToRivH); fcntl(mainToRivH[READ], F_SETFL, O_NONBLOCK); // main comunica al riverHandler
 
-    int enHToMain[2]; pipe(enHToMain); fcntl(enHToMain[READ], F_SETFL, O_NONBLOCK); // enemiesHandler comunica al main
-    int mainToEnH[2]; pipe(mainToEnH); fcntl(mainToEnH[READ], F_SETFL, O_NONBLOCK); // main comunica all'enemiesHandler
+    int enHToMain[2];  pipe(enHToMain);  fcntl(enHToMain[READ], F_SETFL, O_NONBLOCK);  // enemiesHandler comunica al main
+    int mainToEnH[2];  pipe(mainToEnH);  fcntl(mainToEnH[READ], F_SETFL, O_NONBLOCK);  // main comunica all'enemiesHandler
 
     pid_t croc = fork();
 
@@ -60,12 +60,11 @@ void game(GameRules *rules, GameUpdates *thisGame)
         }
         else
         {
-
             pid_t enH = fork();
 
             if(enH == 0)
             {
-                enemiesHandler(enHToMain, mainToEnH);
+                enemiesHandler(enHToMain, mainToEnH, PHToMain, rules->speed);
             }
             else
             {
