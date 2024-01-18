@@ -158,28 +158,32 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
 
 void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
 {
-    Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e il coccodrillo appena letto
-    Enemy allEnemies[MAX_ENEMIES]; Enemy en;
+    // ARRAY E VARIABILI PER LETTURE E "CACHE" 
+    Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e un coccodrillo dove effettuare le letture
+    Enemy allEnemies[MAX_ENEMIES]; Enemy en;        // per salvare tutti i nemici e un nemico dove effettuare le letture
+
+    Projectile frogPrjs[MAX_FROG_PROJ];             // per salvare tutti i proiettili della rana
+    bool printFProj[MAX_FROG_PROJ];                 // FLAG per decidere se stampare o no i proiettili rana
+    Projectile readed;                              // per effettuare le letture di tipo proiettile
+    Projectile enemPrjs[MAX_ENEMIES * 2];           // per salvare tutti i proiettili dei nemici (2 ciascuno)
+    bool printEnProj[MAX_ENEMIES * 2];              // FLAG per decidere se stampare o no i proiettili nemici                                     
+
     short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
-    short minRow = ROWS_PER_MAP - 1;
-    ssize_t bytes_read = -1;
+    short DebugLine = 0;                            // per la stampa delle schermate aggiuntive di debug
+    short minRow = ROWS_PER_MAP - 1;                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
+    ssize_t bytes_read = -1;                        // variabile da usare per verificare le letture dalle pipes non bloccanti
 
-    Projectile frogPrjs[MAX_FROG_PROJ]; 
-    bool printFProj[MAX_FROG_PROJ];
-    Projectile readed;
-    Projectile enemPrjs[MAX_ENEMIES * 2];
-    bool printEnProj[MAX_ENEMIES * 2];
-
+    // OPERAZIONI PRELIMINARI
     for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
         cList.lanes[i] = NULL;
 
-    bool tane[5] = {true, true, true, true, true};
-
-    for(short p = 0; p < MAX_FROG_PROJ; p++)
+    for(short p = 0; p < MAX_FROG_PROJ; p++)        
         printFProj[p] = false;
 
     for(short p = 0; p < MAX_ENEMIES * 2; p++)
         printEnProj[p] = false;
+
+    bool tane[5] = {true, true, true, true, true};
 
     do{
         // LEGGE LA POSIZIONE DELLA RANA
@@ -281,9 +285,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 if(enemPrjs[f].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK - 1))
                 {
                     printEnProj[f] = false;
-                    kill(enemPrjs[f].PID, SIGTERM);
-                    int status;
-                    waitpid(enemPrjs[f].PID, &status, 0);
+                    easyKill(enemPrjs[f].PID);
                 }  
                 else
                     printProjectile(enemPrjs[f].x, enemPrjs[f].y, false);
@@ -291,28 +293,42 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         }
 
-        // STAMPA LA RANA (ED EVENTUALMENTE LE SUE COORDINATE PER IL DEBUG)
         printFrog(frogger.x, frogger.y);
-        if(FROG_DEBUG)                          // stampa le coordinate della rana (utile per il debug)
+
+        // SCHERMATE DI DEBUG
+        DebugLine = 0;
+        if(FROG_DEBUG)                                      
         {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, 0, 11, 3, false);
-            CHANGE_COLOR(DEFAULT);
-            mvprintw(1, COLUMNS_PER_MAP+5, "%03d : %03d", frogger.x, frogger.y);
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 3, false);
+            mvprintw(DebugLine, DEBUG_COLUMNS+1, "FROGGER");
+            mvprintw(DebugLine+1, DEBUG_COLUMNS, "%03d : %03d", frogger.x, frogger.y);
+            DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
         }
         if(ENEMIES_DEBUG)
         {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, 5, 11, MAX_ENEMIES+2, false);
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+            mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
             for(short s = 0; s < MAX_ENEMIES; s++)
-                mvprintw(5+1+s, COLUMNS_PER_MAP+5, "%03d : %03d", allEnemies[s].x, allEnemies[s].y);
-            
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, 7+MAX_ENEMIES, 11, (MAX_ENEMIES*2)+2, false);
+                mvprintw(DebugLine+s+1, DEBUG_COLUMNS, "%03d : %03d", allEnemies[s].x, allEnemies[s].y);  
+            DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
+        }
+        if(ENEMIES_PROJECTILES_DEBUG)
+        {
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, (MAX_ENEMIES*2)+2, false);
+            mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
             for(short s = 0; s < MAX_ENEMIES*2; s++)
-                mvprintw(7+MAX_ENEMIES+1+s, COLUMNS_PER_MAP+5, printEnProj[s] ? "true " : "false");
+                if(printEnProj[s])
+                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemPrjs[s].x, enemPrjs[s].y);
+                else
+                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+            DebugLine += 2 + (MAX_ENEMIES*2) + 1; // 2 (bordi) + MAX_ENEMIES*2 (righe) + 1 (spazio)
         }
         
         refresh(); fps++;               // aggiorna e incrementa fps        
         if(fps != 0 && fps % 30 == 0)   // ogni 30 update passa un secondo
+        {
             seconds++;
+        }
         usleep(FRAME_UPDATE);           // riposa
 
         // SE IL TEMPO E' SCADUTO
@@ -465,8 +481,38 @@ void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short spee
     for(short k = 0; k < MAX_ENEMIES; k++)
         write(enHToMain[WRITE], &allEnemies[k], sizeof(Enemy));
 
+    short readed; ssize_t bytes_read = -1;
     do{
-        
+        do{
+            bytes_read = read(mainToEnH[READ], &readed, sizeof(short));
+            if(bytes_read != -1)
+            {
+                bool collided = false;
+                do{
+                    allEnemies[readed].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+                    allEnemies[readed].y = rowsY[rand() % RIVERSIDE_ROWS];
+                    allEnemies[readed].shot = randomNumber(30, 100);
+                    allEnemies[readed].ID = readed;
+                    allEnemies[readed].genTime = randomNumber(15, 90); // da mezzo a tre secondi
+
+                    for(short e = 0; e < MAX_ENEMIES; e++)
+                    {
+                        if(e != readed)
+                            collided = enemyEnemyCD(allEnemies[readed].x, allEnemies[readed].y, allEnemies[e].x, allEnemies[e].y);
+                        if(collided)
+                            break;
+                    }
+
+                } while (collided);
+                write(enHToMain[WRITE], &allEnemies[readed], sizeof(Enemy));
+
+                pid_t a = fork();
+                if(a == 0)
+                {
+                    singleEnemyHandler(allEnemies[readed], PHToMain, speed);
+                }
+            }
+        } while(bytes_read != -1);
 
         usleep(FRAME_UPDATE);
     } while(true);
@@ -539,6 +585,14 @@ void singleEnemyProjectileHandler(int PHToMain[], Projectile myself)
 /*********************\
 *  FUNZIONI UTILITA'  *
 \*********************/
+
+int easyKill(pid_t PID)
+{
+    int status;
+    kill(PID, SIGTERM);
+    waitpid(PID, &status, 0);
+    return status;
+}
 
 short computeY(short n)
 {

@@ -10,8 +10,13 @@
 #define FRAME_UPDATE 33.333 * 1000
 
 // Costanti per stampare a video le coordinate di debug.
+#define DEBUG_COLUMNS COLUMNS_PER_MAP+5
+#define DEBUG_TOP 11
+
 #define FROG_DEBUG true
 #define ENEMIES_DEBUG true
+#define FROG_PROJECTILES_DEBUG true
+#define ENEMIES_PROJECTILES_DEBUG true
 
 // Costanti per non confondere il comportamento delle pipe.
 #define READ 0
@@ -54,6 +59,9 @@ void singleEnemyProjectileHandler(int SEPHToMain[], Projectile myself);
 /*********************\
 *  FUNZIONI UTILITA'  *
 \*********************/
+
+// Funzione per killare correttamente un processo (kill() & waitpid()).
+int easyKill(pid_t PID);
 
 // Funzione per impostare un nuovo seed per la srand().
 void randomSeed();
