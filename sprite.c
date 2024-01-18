@@ -382,7 +382,7 @@ void printEnemy(short x, short y, short genTime)
     // FULL ENEMY
     wchar_t sprite[ROWS_PER_BLOCK][ENEMY_COLUMNS] =
     {
-        { L'█', L'▄', L'▄', L'▄', L'▄', L'▄', L'█' },
+        { L'█', L'▄', L'▀', L'▄', L'▀', L'▄', L'█' },
         { L'n', L'█', L'▸', L'•', L'◂', L'█', L'n' },
         { L'n', L'n', L'▀', L'▀', L'▀', L'n', L'n' },
         { L'n', L'n', L'▄', L'█', L'▄', L'n', L'n' }

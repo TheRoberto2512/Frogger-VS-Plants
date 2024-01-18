@@ -50,7 +50,7 @@ void istanziaColori()
     inizializzaColore(PETALI, 255, 0, 0);
 
     init_pair(PETALI_E_PRATO, PETALI, ERBA);
-    init_pair(PETALI_E_CENTRO, CENTRO, PETALI);
+    init_pair(PETALI_E_CENTRO, PETALI, CENTRO);
     init_pair(FACCIA_CENTRO, NERO, CENTRO);
     init_pair(PETALI_E_GAMBO, PETALI, GAMBO);
     init_pair(GAMBO_E_PRATO, GAMBO, ERBA);
@@ -78,5 +78,32 @@ void istanziaColori()
     // per i proiettili
     inizializzaColore(PURPLE_PROJ, 181, 29, 252);
     init_pair(PROIETTILI, PETALI, PURPLE_PROJ); // per il proiettile della rana si stampa ' ', per quello dei nemici '█'
+
+    // per il titolo
+    inizializzaColore(VIOLA_TIT, 94, 57, 121);
+    inizializzaColore(ROSA, 174, 70, 170);
+    inizializzaColore(AZZURRO, 62, 109, 228);
+    init_pair(TITOLOS_E_TITOLOC, VIOLA_TIT, COLORE_RANA);
+    init_pair(PRATO_E_TITOLO, VIOLA_TIT, ERBA);    
+    init_pair(ROSA_E_PRATO, ROSA, ERBA);
+    init_pair(ROSA_E_AZZURRO, ROSA, AZZURRO);
+    init_pair(CELESTE_E_AZZURRO, CELESTE, AZZURRO);
+
+    // per il cursore a froma di rana
+    init_pair(EYES_E_CELESTE, EYES, CELESTE);
+    init_pair(FIUME_E_RANA, CELESTE,COLORE_RANA);
+
+    // per l'interfaccia della home
+    init_pair(NERO_E_BIANCO,NERO,BIANCO);
+    init_pair(NERO_E_CELESTE,NERO,CELESTE);
+
+    // per le difficolta'
+    init_pair(NERO_E_VERDE, NERO, HIGH);
+    init_pair(NERO_E_GIALLO, NERO, MID);
+    init_pair(NERO_E_ROSSO, NERO, LOW);
+    
+    // per le scritte colorate in debug
+    init_pair(RED_DEBUG, LOW, DEFAULT_BG);
+    init_pair(GREEN_DEBUG, HIGH, DEFAULT_BG);    
 }
 // initpair( NOME , FOREGROUND, BACKGROUND )

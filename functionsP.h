@@ -7,7 +7,7 @@
 \************/
 
 // Numero di microsecondi tra un update e l'altro.
-#define FRAME_UPDATE 33.333 * 1000
+#define FRAME_UPDATE 33 * 1000
 
 // Costanti per stampare a video le coordinate di debug.
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
@@ -17,6 +17,8 @@
 #define ENEMIES_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
 #define ENEMIES_PROJECTILES_DEBUG true
+#define COLLISION_DEBUG true
+#define COLLISION_DEBUG_INFO true
 
 // Costanti per non confondere il comportamento delle pipe.
 #define READ 0

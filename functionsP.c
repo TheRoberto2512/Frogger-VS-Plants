@@ -293,7 +293,28 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         }
 
+        // STAMPA LA RANA
         printFrog(frogger.x, frogger.y);
+
+        // COLLISIONI
+        bool frogEnPrjsCollided = false;
+        for(short f = 0; f < (MAX_ENEMIES * 2); f++) // proiettili nemici - rana
+        {
+            if(printEnProj[f])
+            {
+                frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
+                if(frogEnPrjsCollided)
+                    break;
+            }
+        } 
+        bool frogEnemyCollided = false;
+        for(short e = 0; e < MAX_ENEMIES; e++)
+        {
+            frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
+            if(frogEnemyCollided)
+                break;
+        }
+
 
         // SCHERMATE DI DEBUG
         DebugLine = 0;
@@ -322,6 +343,40 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 else
                     mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
             DebugLine += 2 + (MAX_ENEMIES*2) + 1; // 2 (bordi) + MAX_ENEMIES*2 (righe) + 1 (spazio)
+        }
+        if(COLLISION_DEBUG)
+        {
+            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 4, false);
+            mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
+
+            if(frogEnemyCollided)   // FROG - ENEMIES
+            {
+                CHANGE_COLOR(RED_DEBUG);
+                mvprintw(DebugLine+1, DEBUG_COLUMNS, "  true   ");
+                CHANGE_COLOR(DEFAULT);
+            } else {
+                CHANGE_COLOR(GREEN_DEBUG);
+                mvprintw(DebugLine+1, DEBUG_COLUMNS, "  false  ");
+                CHANGE_COLOR(DEFAULT);
+            }
+                
+            if(frogEnPrjsCollided)  // FROG - ENEMY PROJECTILES
+            {
+                CHANGE_COLOR(RED_DEBUG);
+                mvprintw(DebugLine+2, DEBUG_COLUMNS, "  true   ");
+                CHANGE_COLOR(DEFAULT);
+            } else {
+                CHANGE_COLOR(GREEN_DEBUG);
+                mvprintw(DebugLine+2, DEBUG_COLUMNS, "  false  ");
+                CHANGE_COLOR(DEFAULT);
+            }  
+
+            if(COLLISION_DEBUG_INFO)
+            {
+                mvprintw(DebugLine+1, DEBUG_COLUMNS + 11, "FROG - ENEMIES");
+                mvprintw(DebugLine+2, DEBUG_COLUMNS + 11, "FROG - ENEMY PROJECTILES");
+            }
+            DebugLine += (2 + 1 + 1);
         }
         
         refresh(); fps++;               // aggiorna e incrementa fps        
