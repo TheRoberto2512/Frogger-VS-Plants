@@ -35,7 +35,24 @@ bool entityAndProjectileCollisionDetector(short x1, short y1, short top1, short 
     if( ( x2 >= x1 && x2 <= (x1+top1-1) ) && ( y2 >= y1 && y2 <= (y1+side1-1) ) )
     {
         // Se x2 e' inclusa tra x1 (estremo sinistro) e x1+top-1 (estremo destro) e
-        // y2 e' inclusa tra y1 (estremo superiore) e y1+side-1 (estremo inferiore)
+        // y2 e' inclusa tra y1 (estremo superiore) e y1+side-1 (estremo inferiore).
+
+        return true;
+    }
+    return false;
+}
+
+bool frogProjectileEnemyProjectileCollisionDetector(short frogProjX, short frogProjY, short enemyProjX, short enemyProjY)
+{
+    if( ( frogProjX == enemyProjX ) && ( frogProjY <= enemyProjY ) )
+    {
+        // Dato che i proiettili solo entita' 1x1, affinche' si verifichi una collisione
+        // entrambe le coordinate (x e y) di ogni proiettile devono avere gli stessi valori.
+
+        // Verifichiamo (frogProjY <= enemyProjY) invece che (frogProjY == enemyProjY) per
+        // garantire una rilevazione piu' precisa. Proiettili a velocita' diverse potrebbero
+        // collidere logicamente (se l'ascissa e' la stessa collidono per forza) ma mai
+        // matematicamente (potrebbe non esserci il momento esatto in cui le due Y si eguagliano).
 
         return true;
     }

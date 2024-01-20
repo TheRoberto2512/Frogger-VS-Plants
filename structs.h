@@ -38,8 +38,7 @@ typedef struct enemy
 typedef struct projectile
 {
     pid_t PID;          // sorgente (0 per la rana, wxyz per i nemici)
-    short FID;          // identificatore del padre
-    short ID;           // identificatore del proiettile
+    short ID;           // identificatore 
     short x;            // coordinata x
     short y;            // coordinata y
     short speed;        // velocita' del proiettile

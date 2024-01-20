@@ -14,8 +14,8 @@
 #define DEBUG_TOP 11
 
 #define FROG_DEBUG true
-#define ENEMIES_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
+#define ENEMIES_DEBUG true
 #define ENEMIES_PROJECTILES_DEBUG true
 #define COLLISION_DEBUG true
 #define COLLISION_DEBUG_INFO true
@@ -91,3 +91,6 @@ short crocodileSpace();
 
 // Funzione per generare una nuova scena (posizioni coccodrilli) all'inizio di una manche.
 void newCrocodileScene(int crocToMain[], short directions[], short speeds[], short spawnTimers[], GameRules *rules);
+
+// Funzione per ottenere il numero della riga in base alla coordinata y dell'entita'.
+short yToRowNumber(short y);
