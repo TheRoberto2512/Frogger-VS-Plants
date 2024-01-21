@@ -47,6 +47,9 @@ typedef struct gameUpdates
 // Costante per definire il numero di proiettili simultanei della rana.
 #define MAX_ENEMIES 3
 
+// Costante per identificare un coccodrillo come "buono".
+#define GOOD_CROC_FLAG -10
+
 // Funzione che restituisce le impostazioni in base alla difficolta'.
 GameRules getRules(short difficult);
 

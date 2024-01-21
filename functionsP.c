@@ -241,20 +241,88 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 }
             }
         } while (bytes_read != -1);
-
-        /* TEST PER IL DE-SPAWN DEI PROIETTILI RANA
-        for(short p = 0; p < MAX_FROG_PROJ; p++)
+        
+        // COLLISIONI
+        bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
+        for(short f = 0; f < (MAX_ENEMIES) && !frogEnPrjsCollided; f++)    
         {
-            if(printFProj[p])
+            if(printEnProj[f])
             {
-                if(frogPrjs[p].y == 15)
+                frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
+            }
+        } 
+
+        bool frogEnemyCollided = false;                                                                         // rana - nemici
+        for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
+        {
+            frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
+        }
+
+        bool twoProjectilesCollided = false;
+        bool frogPrjsEnemiesCollided = false;
+        bool frogPrjsCrocodileCollided = false;
+        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)                                                             // proiettili rana - proiettili nemici / nemici / coccodrilli
+        {
+            if(printFProj[fr])
+            {
+                short ROW = yToRowNumber(frogPrjs[fr].y);
+
+                if(ROW >= 1 && ROW <= RIVERSIDE_ROWS)
                 {
-                    write(mainToFPH[WRITE], &frogPrjs[p].ID, sizeof(frogPrjs[p].ID));
-                    printFProj[p] = false;
+                    for(short en = 0; en < (MAX_ENEMIES ) && !twoProjectilesCollided; en++)             // solo se la ROW e' 1 o 2
+                    {
+                        if(printEnProj[en])
+                        {
+                            twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogPrjs[fr].x, frogPrjs[fr].y, enemPrjs[en].x, enemPrjs[en].y);
+                            if(twoProjectilesCollided)
+                            {
+                                write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
+                                printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
+                                easyKill(enemPrjs[en].PID);                                             // killiamo il processo proiettile
+                                printEnProj[en] = false;                                                // disattiviamo la plag per stamparlo
+                            }
+                        }
+                    }
+                } else if(ROW > RIVERSIDE_ROWS && ROW <= (RIVERSIDE_ROWS+RIVER_ROWS))
+                {
+                    
+                    ROW = ROW - (RIVERSIDE_ROWS + 1);
+
+                    CrocElement *current = cList.lanes[ROW]; // current punta al primo elemento
+
+                    while(current != NULL)
+                    {
+                        frogPrjsCrocodileCollided = crocFrogProjCD(current->croc.x, current->croc.y, frogPrjs[fr].x, frogPrjs[fr].y);
+                        if(frogPrjsCrocodileCollided)
+                        {
+                            write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
+                            printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
+                            if(current->croc.splash != GOOD_CROC_FLAG) // se e' cattivo
+                            {
+                                write(mainToRivH[WRITE], &current->croc, sizeof(croc));             // comunichiamo al RiverHandler le info sul coccodrillo
+                                Kill(&cList, reverseComputeY(current->croc.y), current->croc.PID);  // lo uccidiamo (verra' rigenerato buono dal RiverHandler)
+                            } 
+                            break;
+                        }
+                        current = current->next;
+                    }
+                }
+
+                for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
+                {
+                    if(allEnemies[e].genTime == 0)
+                        frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
+                        if(frogPrjsEnemiesCollided)
+                        {
+                            write(mainToEnH[WRITE], &allEnemies[e].ID, sizeof(allEnemies[e].ID));   // comunichiamo la morte all'EnemiesHandler
+                            easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
+                            write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
+                            printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
+                        }
                 }
             }
-        } */
-        
+        }
+
         // STAMPA TUTTI I NEMICI
         for(short e = 0; e < MAX_ENEMIES; e++)
         {
@@ -275,6 +343,9 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         }
 
+        // STAMPA LA RANA
+        printFrog(frogger.x, frogger.y);
+
         // STAMPA TUTTI I PROIETTILI NEMICI
         for(short f = 0; f < MAX_ENEMIES; f++)
         {
@@ -290,62 +361,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 
             }
         }
-
-        // STAMPA LA RANA
-        printFrog(frogger.x, frogger.y);
-
-        // COLLISIONI
-        bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
-        for(short f = 0; f < (MAX_ENEMIES) && !frogEnPrjsCollided; f++)    
-        {
-            if(printEnProj[f])
-            {
-                frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
-            }
-        } 
-
-        bool frogEnemyCollided = false;                                                                         // rana - nemici
-        for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
-        {
-            frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
-        }
-
-        bool twoProjectilesCollided = false;
-        bool frogPrjsEnemiesCollided = false;
-        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)                                                             // proiettili rana - proiettili nemici && proiettili rana - nemici
-        {
-            if(printFProj[fr])
-            {
-                for(short en = 0; en < (MAX_ENEMIES ) && !twoProjectilesCollided; en++)
-                {
-                    if(printEnProj[en])
-                    {
-                        twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogPrjs[fr].x, frogPrjs[fr].y, enemPrjs[en].x, enemPrjs[en].y);
-                        if(twoProjectilesCollided)
-                        {
-                            write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
-                            printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
-                            easyKill(enemPrjs[en].PID);                                             // killiamo il processo proiettile
-                            printEnProj[en] = false;                                                // disattiviamo la plag per stamparlo
-                        }
-                    }
-                }
-
-                for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
-                {
-                    if(allEnemies[e].genTime == 0)
-                        frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
-                        if(frogPrjsEnemiesCollided)
-                        {
-                            write(mainToEnH[WRITE], &allEnemies[e].ID, sizeof(allEnemies[e].ID));   // comunichiamo la morte all'EnemiesHandler
-                            easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
-                            write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
-                            printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
-                        }
-                }
-            }
-        }
-
+        
         // SCHERMATE DI DEBUG
         DebugLine = 0;
         if(FROG_DEBUG)                                      
@@ -481,10 +497,10 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
     {
         do{
             Crocodile regen;
-            read(mainToRivH[READ], &regen, sizeof(Crocodile));
+            bytes_read = read(mainToRivH[READ], &regen, sizeof(Crocodile));
             if(bytes_read != -1)
             {
-                regen.splash = -10; // il coccodrillo diventa buono
+                regen.splash = GOOD_CROC_FLAG; // il coccodrillo diventa buono
                 spawnCrocodile(crocToMain, regen); // viene generato un nuovo processo per il coccodrillo appena diventato buono
             }
         } while(bytes_read != -1);
@@ -531,7 +547,7 @@ void singleCrocodileHandler(int crocToMain[], Crocodile me)
                     keepGoing = false;
             }
         }
-        if(me.splash != -10)
+        if(me.splash != GOOD_CROC_FLAG)
         {
             me.splash--;
             if(me.splash == 0)
@@ -714,15 +730,13 @@ int easyKill(pid_t PID)
 short computeY(short n)
 {
     short y = n * ROWS_PER_BLOCK;
-    y +=  (ROWS_PER_BLOCK * (1 + 1 + RIVERSIDE_ROWS)); // considera la scoreaboard, le tane e le righe del fiume.
+    y += (ROWS_PER_BLOCK * (1 + LILY_PADS_ROWS + RIVERSIDE_ROWS)); // considera la scoreaboard, le tane e le righe del fiume.
     return y;
 }
 
-short reverseComputeY(short n)
+short reverseComputeY(short y)
 {
-    short y = (ROWS_PER_BLOCK * (1 + 1 + RIVERSIDE_ROWS));
-    y /= (n * ROWS_PER_BLOCK);
-    return y;
+    return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK ) - LILY_PADS_ROWS - RIVERSIDE_ROWS - 1; // 1 per la scoreboard
 }
 
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splashP)
@@ -732,7 +746,7 @@ Crocodile buildCrocodile(short x, short y, short direction, short speed, short s
     croc.y = y;
     croc.direction = direction;
     croc.speed = speed;
-    croc.splash = -10;
+    croc.splash = GOOD_CROC_FLAG;
     if(splashP)
     {
         short prob = rand() % splashP;
@@ -862,5 +876,5 @@ void newCrocodileScene(int crocToMain[], short directions[], short speeds[], sho
 
 short yToRowNumber(short y)
 {
-    return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK )- LILY_PADS_ROWS;
+    return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK ) - LILY_PADS_ROWS;
 }

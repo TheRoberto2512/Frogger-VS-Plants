@@ -22,6 +22,9 @@
 // Macro per rilevare collisioni tra un nemico e un proiettile rana.
 #define enemyFrogProjCD(enemyX, enemyY, projX, projY) entityAndProjectileCollisionDetector(enemyX, enemyY, ENEMY_COLUMNS, ROWS_PER_BLOCK, projX, projY)
 
+// Macro per rilevare collisioni tra un coccodrillo e un proiettile rana.
+#define crocFrogProjCD(crocX, crocY, fProjX, fProjY) entityAndProjectileCollisionDetector(crocX, crocY, CROCODILE_COLUMNS, ROWS_PER_BLOCK, fProjX, fProjY)
+
 
 /*************************\
 *  PROTOTIPI DI FUNZIONE  *
