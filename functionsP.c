@@ -179,7 +179,10 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 
     // OPERAZIONI PRELIMINARI
     for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
+    {
         cList.lanes[i] = NULL;
+        cList.counts[i] = 0;
+    }        
 
     setToFalse(printFProj,MAX_FROG_PROJ);
     setToFalse(printEnemies,MAX_ENEMIES);
@@ -229,6 +232,16 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         } while (bytes_read != -1); 
 
+        if(fps % 10 == 0 && fps > 0)
+            for(short i = 0; i < MAX_ENEMIES; i++)
+            {
+                if(printEnemies[i] == false)
+                {
+                    write(mainToEnH[WRITE], &i, sizeof(i));
+                    break;
+                }
+            }
+
         // LEGGE TUTTI I PROIETTILI
         bytes_read = -1;
         do{
@@ -250,7 +263,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         
         // COLLISIONI
         bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
-        for(short f = 0; f < (MAX_ENEMIES) && !frogEnPrjsCollided; f++)    
+        for(short f = 0; f < MAX_ENEMIES && !frogEnPrjsCollided; f++)    
         {
             if(printEnProj[f])
             {
@@ -283,7 +296,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                             frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
                             if(frogPrjsEnemiesCollided)
                             {
-                                write(mainToEnH[WRITE], &allEnemies[e].ID, sizeof(allEnemies[e].ID));   // comunichiamo la morte all'EnemiesHandler
+                                currentGame->score = currentGame->score + ENEMY_KILLED;                 // aggiungiamo i punti
                                 easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
                                 printEnemies[e] = false;                                                 
                                 write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
@@ -356,8 +369,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                             {
                                 allFull = false;
                                 break;
-                            }
-                                
+                            }     
                         }
                         if(allFull)
                         {
@@ -446,6 +458,19 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                     else
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
                 DebugLine += 2 + (MAX_FROG_PROJ) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
+            }
+            if(RIVER_DEBUG)
+            {
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, RIVER_ROWS+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+2, "RIVER");
+                for(short r = 0; r < RIVER_ROWS; r++)
+                {
+                    if(cList.counts[r] == 0)
+                        CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %d", r, cList.counts[r]);
+                    CHANGE_COLOR(DEFAULT);
+                }
+                DebugLine += 2 + (RIVER_ROWS) + 1;
             }
             if(ENEMIES_DEBUG)
             {

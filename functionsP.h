@@ -16,6 +16,7 @@
 #define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
+#define RIVER_DEBUG true
 #define ENEMIES_DEBUG true
 #define ENEMIES_PROJECTILES_DEBUG true
 #define COLLISION_DEBUG true

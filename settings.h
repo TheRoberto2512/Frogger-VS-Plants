@@ -58,6 +58,9 @@ GameRules getRules(short difficult);
 // Punteggio da assegnare quando la rana avanza di una riga.
 #define ROW_UP 10
 
+// Punteggio da assegnare quando viene sconfitto un nemico.
+#define ENEMY_KILLED 20
+
 // Punteggio da assegnare quando viene riempita una tana.
 #define FILLED_LILYPAD 50
 

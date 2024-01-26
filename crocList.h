@@ -14,6 +14,7 @@ typedef struct crocElement
 typedef struct CrocList
 {
     CrocElement *lanes[RIVER_ROWS];
+    short counts[RIVER_ROWS];
 } CrocList;
 
 // Aggiorna un coccodrillo esistente (se non esiste lo crea).
