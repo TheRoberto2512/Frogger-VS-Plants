@@ -158,9 +158,13 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
 
 void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
 {
+    // FLAG BOOLEANE PER GESTIRE LA PARTITA
+    bool endManche = false; bool keepPlaying = true;
+
     // ARRAY E VARIABILI PER LETTURE E "CACHE" 
     Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e un coccodrillo dove effettuare le letture
     Enemy allEnemies[MAX_ENEMIES]; Enemy en;        // per salvare tutti i nemici e un nemico dove effettuare le letture
+    bool printEnemies[MAX_ENEMIES];
 
     Projectile frogPrjs[MAX_FROG_PROJ];             // per salvare tutti i proiettili della rana
     bool printFProj[MAX_FROG_PROJ];                 // FLAG per decidere se stampare o no i proiettili rana
@@ -177,13 +181,19 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
         cList.lanes[i] = NULL;
 
-    for(short p = 0; p < MAX_FROG_PROJ; p++)           
-        printFProj[p] = false;
+    setToFalse(printFProj,MAX_FROG_PROJ);
+    setToFalse(printEnemies,MAX_ENEMIES);
+    setToFalse(printEnProj,MAX_ENEMIES);
 
-    for(short p = 0; p < MAX_ENEMIES; p++)
-        printEnProj[p] = false;
+    bool emptyLilyPads[5] = {true, true, true, true, true};
+    double r = BLOCK_PER_MAP_ROWS / 5;
+    short lilyPadsX[5] = { -1, -1, -1, -1, -1};
 
-    bool tane[5] = {true, true, true, true, true};
+    if(lilyPadsX[0] == -1)
+        for(short i = 0; i < 5; i++)
+        {
+            lilyPadsX[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
+        }
 
     do{
         // LEGGE LA POSIZIONE DELLA RANA
@@ -199,10 +209,6 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             clear(); customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);
         }                        
         
-        //customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);
-        printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
-        printMap(true, tane, (fps == 0 && seconds == 0) ? true : false);                            // stampa la mappa
-
         // LEGGE TUTTI I COCCODRILLI
         bytes_read = -1;
         do{
@@ -211,7 +217,6 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 Update(&cList, reverseComputeY(croc.y), croc, fps);
         } while (bytes_read != -1);             
         DeleteUnnecessary(&cList, fps); // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
-        printList(&cList);              // stampa i coccodrilli
 
         // LEGGE TUTTI I NEMICI
         bytes_read = -1;
@@ -220,6 +225,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             if(bytes_read != -1)
             {
                 allEnemies[en.ID] = en;
+                printEnemies[en.ID] = true;
             }
         } while (bytes_read != -1); 
 
@@ -267,33 +273,35 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             {
                 short ROW = yToRowNumber(frogPrjs[fr].y);
 
-                if(ROW >= 1 && ROW <= RIVERSIDE_ROWS)
+                if(ROW >= 1 && ROW <= RIVERSIDE_ROWS) 
                 {
-                    for(short en = 0; en < (MAX_ENEMIES ) && !twoProjectilesCollided; en++)             // solo se la ROW e' 1 o 2
+                    // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
+                    for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
                     {
-                        if(printEnProj[en])
+                        if(allEnemies[e].genTime == 0)
                         {
-                            twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogPrjs[fr].x, frogPrjs[fr].y, enemPrjs[en].x, enemPrjs[en].y);
-                            if(twoProjectilesCollided)
+                            frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
+                            if(frogPrjsEnemiesCollided)
                             {
+                                write(mainToEnH[WRITE], &allEnemies[e].ID, sizeof(allEnemies[e].ID));   // comunichiamo la morte all'EnemiesHandler
+                                easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
+                                printEnemies[e] = false;                                                 
                                 write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
                                 printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
-                                easyKill(enemPrjs[en].PID);                                             // killiamo il processo proiettile
-                                printEnProj[en] = false;                                                // disattiviamo la plag per stamparlo
                             }
                         }
                     }
+
                 } else if(ROW > RIVERSIDE_ROWS && ROW <= (RIVERSIDE_ROWS+RIVER_ROWS))
                 {
-                    
-                    ROW = ROW - (RIVERSIDE_ROWS + 1);
+                    ROW = ROW - (RIVERSIDE_ROWS + 1);           // calcoliamo la riga del fiume corrispondente
 
-                    CrocElement *current = cList.lanes[ROW]; // current punta al primo elemento
+                    CrocElement *current = cList.lanes[ROW];    // current punta al primo elemento di quella riga
 
                     while(current != NULL)
                     {
                         frogPrjsCrocodileCollided = crocFrogProjCD(current->croc.x, current->croc.y, frogPrjs[fr].x, frogPrjs[fr].y);
-                        if(frogPrjsCrocodileCollided)
+                        if(frogPrjsCrocodileCollided) // se c'e' stata una collisione
                         {
                             write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
                             printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
@@ -304,31 +312,86 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                             } 
                             break;
                         }
-                        current = current->next;
+                        current = current->next; // passiamo al prossimo
                     }
                 }
 
-                for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
+                for(short en = 0; en < MAX_ENEMIES&& !twoProjectilesCollided; en++)             
                 {
-                    if(allEnemies[e].genTime == 0)
-                        frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
-                        if(frogPrjsEnemiesCollided)
+                    if(printEnProj[en])
+                    {
+                        twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogPrjs[fr].x, frogPrjs[fr].y, enemPrjs[en].x, enemPrjs[en].y);
+                        if(twoProjectilesCollided)
                         {
-                            write(mainToEnH[WRITE], &allEnemies[e].ID, sizeof(allEnemies[e].ID));   // comunichiamo la morte all'EnemiesHandler
-                            easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
                             write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
                             printFProj[fr] = false;                                                 // disattiviamo la flag per stamparlo
+                            easyKill(enemPrjs[en].PID);                                             // killiamo il processo proiettile
+                            printEnProj[en] = false;                                                // disattiviamo la flag per stamparlo
                         }
+                    }
                 }
             }
         }
 
+        bool froggerEnteredLilypads = false;
+        if(frogger.y == SCOREBOARD_ROWS) // se e' all'altezza delle tane
+        {
+            for(short t = 0; t < 5 && !froggerEnteredLilypads; t++)
+            {
+                if(emptyLilyPads[t])
+                {
+                    froggerEnteredLilypads = isFrogEnteredInside(frogger.x, FROG_COLUMNS, lilyPadsX[t], LILY_PADS_COLUMNS);
+                    if(froggerEnteredLilypads)
+                    {
+                        emptyLilyPads[t] = false;
+
+                        // SCOREBOARD
+                        currentGame->score += FILLED_LILYPAD; // aggiorno il punteggio
+                        currentGame->score += (rules->time - seconds) * POINTS_PER_SECOND;
+
+                        bool allFull = true;
+                        for(short f = 0; f < 5; f++)
+                        {   
+                            if(emptyLilyPads[f])
+                            {
+                                allFull = false;
+                                break;
+                            }
+                                
+                        }
+                        if(allFull)
+                        {
+                            keepPlaying = false;
+                            currentGame->score += VICTORY;
+                        }
+                        else   
+                            endManche = true;                     
+                    }
+                }
+            }
+            if(!froggerEnteredLilypads)
+            {
+                currentGame->lives = currentGame->lives - 1; endManche = true;
+                if(currentGame->lives == 0)
+                    keepPlaying = false;
+            }
+        }
+
+        // INIZIO STAMPE
+        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
+        printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
+        printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                   // stampa la mappa
+        printList(&cList);                                                                          // stampa i coccodrilli
+
         // STAMPA TUTTI I NEMICI
         for(short e = 0; e < MAX_ENEMIES; e++)
-        {
-            printEnemy(allEnemies[e].x, allEnemies[e].y, allEnemies[e].genTime);
-            if(allEnemies[e].genTime > 0)
-                allEnemies[e].genTime--;
+        {   
+            if(printEnemies[e])
+            {
+                printEnemy(allEnemies[e].x, allEnemies[e].y, allEnemies[e].genTime);
+                if(allEnemies[e].genTime > 0)
+                    allEnemies[e].genTime--;
+            }   
         }
 
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
@@ -361,118 +424,168 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 
             }
         }
-        
+            
         // SCHERMATE DI DEBUG
-        DebugLine = 0;
-        if(FROG_DEBUG)                                      
+        if(GENERAL_DEBUG)
         {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 3, false);
-            mvprintw(DebugLine, DEBUG_COLUMNS+1, "FROGGER");
-            mvprintw(DebugLine+1, DEBUG_COLUMNS, "%03d : %03d", frogger.x, frogger.y);
-            DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
-        }
-        if(FROG_PROJECTILES_DEBUG)
-        {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_FROG_PROJ+2, false);
-            mvprintw(DebugLine, DEBUG_COLUMNS+1, "FR-PROJ");
-            for(short s = 0; s < MAX_FROG_PROJ; s++)
-                if(printFProj[s])
-                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", frogPrjs[s].x, frogPrjs[s].y);
-                else
-                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
-            DebugLine += 2 + (MAX_FROG_PROJ) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
-        }
-        if(ENEMIES_DEBUG)
-        {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
-            mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
-            for(short s = 0; s < MAX_ENEMIES; s++)
-                mvprintw(DebugLine+s+1, DEBUG_COLUMNS, "%03d : %03d", allEnemies[s].x, allEnemies[s].y);  
-            DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
-        }
-        if(ENEMIES_PROJECTILES_DEBUG)
-        {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
-            mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
-            for(short s = 0; s < MAX_ENEMIES; s++)
-                if(printEnProj[s])
-                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemPrjs[s].x, enemPrjs[s].y);
-                else
-                    mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
-            DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
-        }
-        if(COLLISION_DEBUG)
-        {
-            customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 6, false);
-            mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
-
-            if(frogEnemyCollided)   // FROG - ENEMIES
+            DebugLine = 0;
+            if(FROG_DEBUG)                                      
             {
-                CHANGE_COLOR(RED_DEBUG);
-                mvprintw(DebugLine+1, DEBUG_COLUMNS, "  true   ");
-                CHANGE_COLOR(DEFAULT);
-            } else {
-                CHANGE_COLOR(GREEN_DEBUG);
-                mvprintw(DebugLine+1, DEBUG_COLUMNS, "  false  ");
-                CHANGE_COLOR(DEFAULT);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 3, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "FROGGER");
+                mvprintw(DebugLine+1, DEBUG_COLUMNS, "%03d : %03d", frogger.x, frogger.y);
+                DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
             }
-                
-            if(frogEnPrjsCollided)  // FROG - ENEMY PROJECTILES
+            if(FROG_PROJECTILES_DEBUG)
             {
-                CHANGE_COLOR(RED_DEBUG);
-                mvprintw(DebugLine+2, DEBUG_COLUMNS, "  true   ");
-                CHANGE_COLOR(DEFAULT);
-            } else {
-                CHANGE_COLOR(GREEN_DEBUG);
-                mvprintw(DebugLine+2, DEBUG_COLUMNS, "  false  ");
-                CHANGE_COLOR(DEFAULT);
-            }  
-
-            if(twoProjectilesCollided)  // FROG PROJECTILES - ENEMY PROJECTILES
-            {
-                CHANGE_COLOR(RED_DEBUG);
-                mvprintw(DebugLine+3, DEBUG_COLUMNS, "  true   ");
-                CHANGE_COLOR(DEFAULT);
-            } else {
-                CHANGE_COLOR(GREEN_DEBUG);
-                mvprintw(DebugLine+3, DEBUG_COLUMNS, "  false  ");
-                CHANGE_COLOR(DEFAULT);
-            } 
-
-            if(frogPrjsEnemiesCollided)  // ENEMY - FROG PROJECTILES
-            {
-                CHANGE_COLOR(GREEN_DEBUG);
-                mvprintw(DebugLine+4, DEBUG_COLUMNS, "  true   ");
-                CHANGE_COLOR(DEFAULT);
-            } else {
-                CHANGE_COLOR(RED_DEBUG);
-                mvprintw(DebugLine+4, DEBUG_COLUMNS, "  false  ");
-                CHANGE_COLOR(DEFAULT);
-            } 
-
-            if(COLLISION_DEBUG_INFO)
-            {
-                mvprintw(DebugLine+1, DEBUG_COLUMNS + 11, "FROG - ENEMIES");
-                mvprintw(DebugLine+2, DEBUG_COLUMNS + 11, "FROG - ENEMY PROJECTILES");
-                mvprintw(DebugLine+3, DEBUG_COLUMNS + 11, "FROG PROJECTILES - ENEMY PROJECTILES");
-                mvprintw(DebugLine+4, DEBUG_COLUMNS + 11, "ENEMY - FROG PROJECTILES");
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_FROG_PROJ+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "FR-PROJ");
+                for(short s = 0; s < MAX_FROG_PROJ; s++)
+                    if(printFProj[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", frogPrjs[s].x, frogPrjs[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                DebugLine += 2 + (MAX_FROG_PROJ) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
             }
-            DebugLine += (2 + 1 + 1);
+            if(ENEMIES_DEBUG)
+            {
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    mvprintw(DebugLine+s+1, DEBUG_COLUMNS, "%03d : %03d", allEnemies[s].x, allEnemies[s].y);  
+                DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
+            }
+            if(ENEMIES_PROJECTILES_DEBUG)
+            {
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    if(printEnProj[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemPrjs[s].x, enemPrjs[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
+            }
+            if(COLLISION_DEBUG)
+            {
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 6, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
+
+                if(frogEnemyCollided)   // FROG - ENEMIES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                }
+                    
+                if(frogEnPrjsCollided)  // FROG - ENEMY PROJECTILES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                }  
+
+                if(twoProjectilesCollided)  // FROG PROJECTILES - ENEMY PROJECTILES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(frogPrjsEnemiesCollided)  // ENEMY - FROG PROJECTILES
+                {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(COLLISION_DEBUG_INFO)
+                {
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS + 11, "FROG - ENEMIES");
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS + 11, "FROG - ENEMY PROJECTILES");
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS + 11, "FROG PROJECTILES - ENEMY PROJECTILES");
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS + 11, "ENEMY - FROG PROJECTILES");
+                }
+                DebugLine += (2 + 1 + 1);
+            }
+        }          
+
+        // SE IL TEMPO E' SCADUTO
+        if((rules->time-seconds) <= -1)
+        {
+            currentGame->lives = currentGame->lives - 1; endManche = true;
         }
-        
+
+        // COSA FARE PER RICOMINCIARE LA MANCHE
+        if(endManche)
+        {
+            endManche = false;
+
+            seconds = 0; fps = 0; 
+
+            // LA RANA RITORNA ALLA POSIZIONE INIZIALE 
+            frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1;    // x iniziale (centro mappa)
+            frogger.y = ROWS_PER_MAP - 1;                                   // y iniziale (ultima riga)
+            write(mainToFrog[WRITE], &frogger, sizeof(Frog));
+            minRow = ROWS_PER_MAP - 1;
+
+            // NUOVA SCENA PER IL FIUME (TUTTI COCCODRILLI UCCISI E RIFATTI)
+            Crocodile killAllFlag;
+            if(keepPlaying)
+            {
+                killAllFlag.x = CROCS_APOCALYPSE; killAllFlag.y = CROCS_APOCALYPSE;         // nuova scena per il fiume
+                write(mainToRivH[WRITE], &killAllFlag, sizeof(Crocodile));
+            }
+            else
+            {
+                killAllFlag.x = CROC_STOP; killAllFlag.y = CROC_STOP;                       // niente piu' coccodrilli
+                write(mainToRivH[WRITE], &killAllFlag, sizeof(Crocodile));                  
+            }
+
+            killAll(&cList);                                                                // uccidiamo tutti i coccodrilli
+
+            // NEMICI E PROIETTILI
+            for(short en = 0; en < MAX_ENEMIES; en++)
+            {
+                easyKill(allEnemies[en].PID);                                               // uccidiamo il nemico
+                easyKill(enemPrjs[en].PID);                                                 // uccidiamo il suo proiettile
+            }
+            short newEnemies = (short) NEW_ENEMIES_FLAG;
+            if(keepPlaying)                                                             // se il gioco deve continuare
+                write(mainToEnH[WRITE], &newEnemies, sizeof(newEnemies));               // chiediamo la loro rigenerazione
+            
+            setToFalse(printEnProj, MAX_ENEMIES);      
+            setToFalse(printEnemies, MAX_ENEMIES);  
+            setToFalse(printFProj, MAX_FROG_PROJ);   
+            for(short fp = 0; fp < MAX_FROG_PROJ; fp++)
+                if(printFProj[fp])
+                    write(mainToFPH[WRITE], &frogPrjs[fp].ID, sizeof(frogPrjs[fp].ID));  
+        }
+
+        // UPDATE SCHERMO E TEMPO
         refresh(); fps++;               // aggiorna e incrementa fps        
         if(fps != 0 && fps % 30 == 0)   // ogni 30 update passa un secondo
             seconds++;
 
         usleep(FRAME_UPDATE);           // riposa
-
-        // SE IL TEMPO E' SCADUTO
-        if((rules->time-seconds) <= -1)
-        {
-            currentGame->lives = currentGame->lives - 1; break;
-        }
-
-    } while(true);
+    
+    } while(keepPlaying);
     
     killAll(&cList);
 }
@@ -480,7 +593,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
 void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
 {
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};   // [i] dove deve spawnare il coccodrillo se la sua direzione e' i
-    
+    bool keepGenerating = true;
     short directions[RIVER_ROWS];                                                               // salva le direzioni delle corsie
     short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
     short spawnTimers[RIVER_ROWS] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};   // inizializzati a valori altissimi
@@ -500,12 +613,33 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
             bytes_read = read(mainToRivH[READ], &regen, sizeof(Crocodile));
             if(bytes_read != -1)
             {
-                regen.splash = GOOD_CROC_FLAG; // il coccodrillo diventa buono
-                spawnCrocodile(crocToMain, regen); // viene generato un nuovo processo per il coccodrillo appena diventato buono
+                if(regen.x == CROCS_APOCALYPSE && regen.y == CROCS_APOCALYPSE) // APOCALISSE DEI COCCODRILLI
+                {
+                    usleep(FRAME_UPDATE);
+                    do{
+                        bytes_read = read(mainToRivH[READ], &regen, sizeof(Crocodile));
+                        if (bytes_read != -1)
+                            easyKill(regen.PID);
+                    } while (bytes_read != -1);
+
+                    riverSpeeds(speeds, rules->speed);
+                    directions[0] = rand() % 2; // puo' essere 0 o 1
+                    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, rules);
+                }
+                else if(regen.x == CROC_STOP && regen.y == CROC_STOP)   // basta con la generazione
+                {
+                    keepGenerating = false;
+                }
+                else
+                {
+                    regen.splash = GOOD_CROC_FLAG; // il coccodrillo diventa buono
+                    spawnCrocodile(crocToMain, regen); // viene generato un nuovo processo per il coccodrillo appena diventato buono
+                }
+
             }
         } while(bytes_read != -1);
 
-        for(short i = 0; i < RIVER_ROWS; i++)
+        for(short i = 0; i < RIVER_ROWS && keepGenerating; i++)
         {
             if(spawnTimers[i] == 0)
             {
@@ -580,76 +714,50 @@ void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short spee
     }
 
     // GENERA I NEMICI
-    for(short i = 0; i < MAX_ENEMIES;)
-    {
-        //if(i == 0)
-            //allEnemies[i].x = 1;
-        //else
-            allEnemies[i].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
-        allEnemies[i].y = rowsY[rand() % RIVERSIDE_ROWS];
-        allEnemies[i].shot = randomNumber(30, 100);
-        allEnemies[i].ID = i;
-        allEnemies[i].genTime = randomNumber(0, 30); // da 0 a 1 secondi
-
-        bool collided = false;
-        for(short c = 0; c < i; c++)
-        {
-            collided = enemyEnemyCD(allEnemies[i].x, allEnemies[i].y, allEnemies[c].x, allEnemies[c].y);
-            if(collided)
-            break;
-        }
-
-        if(collided == false)
-            i++;
-    }
+    newEnemiesScene(rowsY, allEnemies);
 
     // CREA I PROCESSI NEMICI
     for(short p = 0; p < MAX_ENEMIES; p++)
     {
-        pid_t a = fork();
-        if(a == 0)
-        {
-            singleEnemyHandler(allEnemies[p], PHToMain, speed);
-        } 
-        else
-            allEnemies[p].PID = a;
+        spawnEnemy(enHToMain, PHToMain, allEnemies, p, speed);
     }
-
-    // COMUNICA I NEMICI AL MANAGER
-    for(short k = 0; k < MAX_ENEMIES; k++)
-        write(enHToMain[WRITE], &allEnemies[k], sizeof(Enemy));
 
     short readed; ssize_t bytes_read = -1;
     do{
         do{
-            bytes_read = read(mainToEnH[READ], &readed, sizeof(short));
+            bytes_read = read(mainToEnH[READ], &readed, sizeof(readed));
             if(bytes_read != -1)
             {
-                bool collided = false;
-                do{
-                    allEnemies[readed].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
-                    allEnemies[readed].y = rowsY[rand() % RIVERSIDE_ROWS];
-                    allEnemies[readed].shot = randomNumber(30, 100);
-                    allEnemies[readed].ID = readed;
-                    allEnemies[readed].genTime = randomNumber(15, 90); // da mezzo a tre secondi
+                if(readed == NEW_ENEMIES_FLAG)
+                {
+                    newEnemiesScene(rowsY, allEnemies);
 
                     for(short e = 0; e < MAX_ENEMIES; e++)
                     {
-                        if(e != readed)
-                            collided = enemyEnemyCD(allEnemies[readed].x, allEnemies[readed].y, allEnemies[e].x, allEnemies[e].y);
-                        if(collided)
-                            break;
+                        spawnEnemy(enHToMain, PHToMain, allEnemies, e, speed);
                     }
+                } else {
+                    bool collided = false;
+                    do{
+                        collided = false;
+                        allEnemies[readed].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+                        allEnemies[readed].y = rowsY[rand() % RIVERSIDE_ROWS];
+                        allEnemies[readed].shot = randomNumber(30, 100);
+                        allEnemies[readed].ID = readed;
+                        allEnemies[readed].genTime = randomNumber(15, 90); // da mezzo a tre secondi
 
-                } while (collided);
+                        for(short e = 0; e < MAX_ENEMIES; e++)
+                        {
+                            if(e != readed)
+                                collided = enemyEnemyCD(allEnemies[readed].x, allEnemies[readed].y, allEnemies[e].x, allEnemies[e].y);
+                            if(collided)
+                                break;
+                        }
 
-                pid_t a = fork();
-                if(a == 0)
-                {
-                    singleEnemyHandler(allEnemies[readed], PHToMain, speed);
+                    } while (collided);
+
+                    spawnEnemy(enHToMain, PHToMain, allEnemies, readed, speed);
                 }
-                allEnemies[readed].PID = a;
-                write(enHToMain[WRITE], &allEnemies[readed], sizeof(Enemy));
             }
         } while(bytes_read != -1);
 
@@ -877,4 +985,47 @@ void newCrocodileScene(int crocToMain[], short directions[], short speeds[], sho
 short yToRowNumber(short y)
 {
     return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK ) - LILY_PADS_ROWS;
+}
+
+void setToFalse(bool array[], short size)
+{
+    for(short i = 0; i < size; i++)
+        array[i] = false;
+}
+
+void newEnemiesScene(short rowsY[], Enemy allEnemies[])
+{
+    for(short i = 0; i < MAX_ENEMIES;)
+    {
+        allEnemies[i].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+        allEnemies[i].y = rowsY[rand() % RIVERSIDE_ROWS];
+        allEnemies[i].shot = randomNumber(30, 100);
+        allEnemies[i].ID = i;
+        allEnemies[i].genTime = randomNumber(0, 30); // da 0 a 1 secondi
+
+        bool collided = false;
+        for(short c = 0; c < i; c++)
+        {
+            collided = enemyEnemyCD(allEnemies[i].x, allEnemies[i].y, allEnemies[c].x, allEnemies[c].y);
+            if(collided)
+            break;
+        }
+
+        if(collided == false)
+            i++;
+    }
+}
+
+void spawnEnemy(int enHToMain[], int PHToMain[], Enemy allEnemies[], short enemyID, short speed)
+{
+    pid_t a = fork();
+    if(a == 0)
+    {
+        singleEnemyHandler(allEnemies[enemyID], PHToMain, speed);       // chiamiamo la funzione che gestira' il processo
+    }
+    else if(a > 0)
+    {
+        allEnemies[enemyID].PID = a;                                    // salviamo il PID del nemico appena creato
+        write(enHToMain[WRITE], &allEnemies[enemyID], sizeof(Enemy));   // lo salviamo dell'array con tutti i nemici
+    }
 }

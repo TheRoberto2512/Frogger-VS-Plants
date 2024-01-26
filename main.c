@@ -29,8 +29,6 @@ int main()
 
 void game(GameRules *rules, GameUpdates *thisGame)
 {
-    int status; // servira' dopo per la waitpid()
-
     // PIPES (tutte impostate in modalita' non bloccante per la lettura)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
@@ -69,6 +67,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
             else
             {
                 initscr(); noecho(); curs_set(0);
+                
                 start_color(); istanziaColori(); cbreak();
                 nodelay(stdscr, TRUE); // nessun delay per la getch()
                 keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
@@ -81,7 +80,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
                     
                     close(frogToMain[READ]);  // pipe dove scrive le coordinate
                     close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-                    close(PHToMain[READ]);   // pipe dove comunica la creazione di un proiettile rana
+                    close(PHToMain[READ]);    // pipe dove comunica la creazione di un proiettile rana
                     frogHandler(frogToMain, mainToFrog, frogToFPH);
                 }
                 else if(frog > 0)
@@ -91,16 +90,15 @@ void game(GameRules *rules, GameUpdates *thisGame)
                     mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
 
                     endwin();
-                    kill(frog, SIGTERM);        // uccide la rana
-                    waitpid(frog, &status, 0); 
+                    easyKill(frog); // uccide la rana
                 }
+                easyKill(enH);
             }
-
+            easyKill(frogPRJH);
         }
     }
 
-    kill(croc, SIGTERM);        // uccide il riverHandler
-    waitpid(croc, &status, 0); 
+    easyKill(croc);
 
     usleep(FRAME_UPDATE); Crocodile crocc;
 
@@ -109,8 +107,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
         bytes_read = read(crocToMain[READ], &croc, sizeof(croc)); // read(...) restituisce il numero di byte letti (-1 se non legge nulla) 
         if(bytes_read != -1)
         {
-            kill(crocc.PID, SIGTERM);
-            waitpid(crocc.PID, &status, 0); 
+            easyKill(crocc.PID);
         }
     } while (bytes_read != -1); // controlla che non sia rimasto nessun coccodrillo in vita, in caso li uccide
 }

@@ -38,3 +38,6 @@ bool entityAndProjectileCollisionDetector(short x1, short y1, short top1, short 
 
 // Funzione generale per la rilevazione delle collisioni tra due proiettili.
 bool frogProjectileEnemyProjectileCollisionDetector(short frogProjX, short frogProjY, short enemyProjX, short enemyProjY);
+
+// Funzione per la rilevazione dell'entrata della rana all'interno di una tana vuota.
+bool isFrogEnteredInside(short frogX, short frogTop, short lilyPadX, short lilyPadTop);

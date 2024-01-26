@@ -13,6 +13,7 @@
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
+#define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
 #define ENEMIES_DEBUG true
@@ -28,6 +29,23 @@
 #define CROC_SPACE_MIN ((short)(COLUMNS_PER_BLOCK * 2))
 #define CROC_SPACE_MAX ((short)(COLUMNS_PER_BLOCK * 4))
 
+
+/*****************\
+*  COSTANTI FLAG  *
+\*****************/
+
+// FLAG per identificare un coccodrillo come "buono".
+#define GOOD_CROC_FLAG -10
+
+// FLAG per indicare l'apocalisse dei coccodrilli.
+#define CROCS_APOCALYPSE -1289
+
+// FLAG per mettere in pausa la generazione di coccodrilli.
+#define CROC_STOP -1500
+
+// FLAG per comunicare all'enemiesHandler di rigenerare tutti i nemici.
+#define NEW_ENEMIES_FLAG -500
+ 
 
 /*********************\
 *  FUNZIONI PROCESSI  *
@@ -94,3 +112,12 @@ void newCrocodileScene(int crocToMain[], short directions[], short speeds[], sho
 
 // Funzione per ottenere il numero della riga in base alla coordinata y dell'entita'.
 short yToRowNumber(short y);
+
+// Funzione che imposta a false tutti gli elementi di un array booleano.
+void setToFalse(bool array[], short size);
+
+// Funzione per generare nuove posizioni per tutti i nemici.
+void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
+
+// Funzioen per creare il processo nemico.
+void spawnEnemy(int enHToMain[], int PHToMain[], Enemy allEnemies[], short enemyID, short speed);
