@@ -347,7 +347,9 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         }
 
         bool froggerEnteredLilypads = false;
-        if(frogger.y == SCOREBOARD_ROWS) // se e' all'altezza delle tane
+        bool frogOnCrocodile = false;
+        short frogRow = yToRowNumber(frogger.y);
+        if(frogRow == 0) // se la rana e' all'altezza delle tane
         {
             for(short t = 0; t < 5 && !froggerEnteredLilypads; t++)
             {
@@ -388,6 +390,22 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                     keepPlaying = false;
             }
         }
+        else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
+        {
+            frogRow -= (RIVERSIDE_ROWS + 1);
+
+            CrocElement *current = cList.lanes[frogRow];    // current punta al primo elemento di quella riga
+
+            while(current != NULL)
+            {
+                frogOnCrocodile = frogCrocodileCD(frogger.x, current->croc.x);
+                if(frogOnCrocodile) // se c'e' stata una collisione
+                {
+                    break;
+                }
+                current = current->next; // passiamo al prossimo
+            }
+        }
 
         // INIZIO STAMPE
         customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
@@ -426,14 +444,20 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         {
             if(printEnProj[f])
             {
-                if(enemPrjs[f].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK - 1))
+                if(seconds < 1)
                 {
                     printEnProj[f] = false;
-                    easyKill(enemPrjs[f].PID);
-                }  
+                }
                 else
-                    printProjectile(enemPrjs[f].x, enemPrjs[f].y, false);
-
+                {
+                    if(enemPrjs[f].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK - 1))
+                    {
+                        printEnProj[f] = false;
+                        easyKill(enemPrjs[f].PID);
+                    }  
+                    else
+                        printProjectile(enemPrjs[f].x, enemPrjs[f].y, false);
+                }
             }
         }
             
@@ -493,7 +517,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
             if(COLLISION_DEBUG)
             {
-                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 6, false);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 7, false);
                 mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
 
                 if(frogEnemyCollided)   // FROG - ENEMIES
@@ -518,25 +542,40 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                     CHANGE_COLOR(DEFAULT);
                 }  
 
-                if(twoProjectilesCollided)  // FROG PROJECTILES - ENEMY PROJECTILES
+                if(frogOnCrocodile)  // FROG - CROCODILE
                 {
-                    CHANGE_COLOR(RED_DEBUG);
+                    CHANGE_COLOR(GREEN_DEBUG);
                     mvprintw(DebugLine+3, DEBUG_COLUMNS, "  true   ");
                     CHANGE_COLOR(DEFAULT);
                 } else {
-                    CHANGE_COLOR(GREEN_DEBUG);
+                    short fRow = yToRowNumber(frogger.y);
+                    if(fRow > RIVERSIDE_ROWS && fRow <= (RIVERSIDE_ROWS+RIVER_ROWS))
+                        CHANGE_COLOR(RED_DEBUG);
+                    else
+                        CHANGE_COLOR(GREEN_DEBUG);
                     mvprintw(DebugLine+3, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(twoProjectilesCollided)  // FROG PROJECTILES - ENEMY PROJECTILES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  false  ");
                     CHANGE_COLOR(DEFAULT);
                 } 
 
                 if(frogPrjsEnemiesCollided)  // ENEMY - FROG PROJECTILES
                 {
                     CHANGE_COLOR(GREEN_DEBUG);
-                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  true   ");
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS, "  true   ");
                     CHANGE_COLOR(DEFAULT);
                 } else {
                     CHANGE_COLOR(RED_DEBUG);
-                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  false  ");
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS, "  false  ");
                     CHANGE_COLOR(DEFAULT);
                 } 
 
@@ -544,8 +583,9 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 {
                     mvprintw(DebugLine+1, DEBUG_COLUMNS + 11, "FROG - ENEMIES");
                     mvprintw(DebugLine+2, DEBUG_COLUMNS + 11, "FROG - ENEMY PROJECTILES");
-                    mvprintw(DebugLine+3, DEBUG_COLUMNS + 11, "FROG PROJECTILES - ENEMY PROJECTILES");
-                    mvprintw(DebugLine+4, DEBUG_COLUMNS + 11, "ENEMY - FROG PROJECTILES");
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS + 11, "FROG - CROCODILES");
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS + 11, "FROG PROJECTILES - ENEMY PROJECTILES");
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS + 11, "ENEMY - FROG PROJECTILES");
                 }
                 DebugLine += (2 + 1 + 1);
             }

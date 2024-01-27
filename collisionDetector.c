@@ -70,3 +70,15 @@ bool isFrogEnteredInside(short frogX, short frogTop, short lilyPadX, short lilyP
     }
     return false;
 }
+
+bool isFrogOnCrocodile(short frogX, short frogTop, short crocX, short crocTop)
+{
+    // diamo per scontato che le Y corrispondano (la verifica sara' fatta dalla funzione chiamante)
+    short extra_columns = 3; // colonne "extra" per l'approssimazione  
+    short r = (crocX + (crocTop-1) - extra_columns);
+    if( ( frogX > ( crocX - extra_columns ) ) && ( frogX <= r+1 ) )
+    {
+        return true;
+    }
+    return false;
+}
