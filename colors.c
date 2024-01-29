@@ -104,6 +104,10 @@ void istanziaColori()
     
     // per le scritte colorate in debug
     init_pair(RED_DEBUG, LOW, DEFAULT_BG);
-    init_pair(GREEN_DEBUG, HIGH, DEFAULT_BG);    
+    init_pair(GREEN_DEBUG, HIGH, DEFAULT_BG);   
+    
+    // per il segnale di pericolo
+    init_pair(ROSSO_E_BIANCO, LOW, BIANCO);
+    init_pair(ROSSO_E_CELESTE, LOW, CELESTE); 
 }
 // initpair( NOME , FOREGROUND, BACKGROUND )

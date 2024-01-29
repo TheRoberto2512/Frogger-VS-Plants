@@ -29,9 +29,12 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[])
 
     usleep(FRAME_UPDATE); 
     bool update; int ch;
+
     do {
         read(mainToFrog[READ], &frogger, sizeof(frogger)); // prova a leggere le nuove coordinate della rana (in caso sia su un coccodrillo)
+        
         update = false;
+
         if((ch = getch()) != ERR && ch != KEY_MOUSE) // se c'e' stato un input non proveniente dal mouse
         {
             switch(ch) //qui dentro modifichiamo x e y
@@ -162,9 +165,14 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     bool endManche = false; bool keepPlaying = true;
 
     // ARRAY E VARIABILI PER LETTURE E "CACHE" 
-    Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana, la lista dei coccodrilli e un coccodrillo dove effettuare le letture
+    Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana e la lista dei coccodrilli e per salvare un coccodrillo dove effettuare le letture
+
+    Crocodile collidedCroc;                         // per salvare il coccodrillo su cui la rana sale
+    collidedCroc.PID = 0;
+    short xDiff; short oldFrogX; short xFDiff;
+
     Enemy allEnemies[MAX_ENEMIES]; Enemy en;        // per salvare tutti i nemici e un nemico dove effettuare le letture
-    bool printEnemies[MAX_ENEMIES];
+    bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
 
     Projectile frogPrjs[MAX_FROG_PROJ];             // per salvare tutti i proiettili della rana
     bool printFProj[MAX_FROG_PROJ];                 // FLAG per decidere se stampare o no i proiettili rana
@@ -176,6 +184,10 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     short DebugLine = 0;                            // per la stampa delle schermate aggiuntive di debug
     short minRow = ROWS_PER_MAP - 1;                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
     ssize_t bytes_read = -1;                        // variabile da usare per verificare le letture dalle pipes non bloccanti
+
+    short yDanger = -1;
+    short dirDanger = -1;
+    bool printDanger = false;
 
     // OPERAZIONI PRELIMINARI
     for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
@@ -399,8 +411,66 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             while(current != NULL)
             {
                 frogOnCrocodile = frogCrocodileCD(frogger.x, current->croc.x);
-                if(frogOnCrocodile) // se c'e' stata una collisione
+                if(frogOnCrocodile) // se c'e' stata una collisione con un coccodrillo
                 {
+                    if(collidedCroc.PID != current->croc.PID)   // se la rana e' appena salita su quel coccodrillo
+                    {
+                        collidedCroc = current->croc;
+                        xDiff = frogger.x - collidedCroc.x;     // differenza rana-coccodrillo
+                        oldFrogX = frogger.x;
+                    }
+                    else                                        // se la rana e' rimasta sullo stesso coccodrillo
+                    {
+                        bool updateF = false;
+
+                        xFDiff = 0;
+                        if(oldFrogX != frogger.x)               // se la rana si e' spostata a destra o sinistra
+                        {
+                            updateF = true;
+                            xFDiff = oldFrogX - frogger.x;      // si calcola la differenza
+                            if(xFDiff < 0)                      // si e' spostata verso destra
+                            {
+                                xFDiff = COLUMNS_PER_BLOCK;
+                            }
+                            else                                // si e' spostata verso sinistra
+                            {
+                                xFDiff = 0 - COLUMNS_PER_BLOCK;
+                            }   
+                        }
+
+                        short xDiff2 = 0;
+                        if(collidedCroc.x != current->croc.x)   // se il coccodrillo si e' mosso
+                        {
+                            updateF = true;
+
+                            xDiff2 = oldFrogX - collidedCroc.x;
+                            xDiff2 = xDiff - xDiff2; 
+                        } 
+
+                        if(updateF)
+                        {
+                            frogger.x = oldFrogX + xFDiff;              // perche' la rana si e' spostata
+                            frogger.x += xDiff2;
+
+                            // per evitare che possa andare oltre i gli estremi della mappa
+                            if (frogger.x < 1)
+                                frogger.x = 1;
+                            else if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
+                                frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
+
+                            write(mainToFrog[WRITE], &frogger, sizeof(frogger));    // infine stampiamo
+
+                            oldFrogX = frogger.x;
+                        }
+                            
+                    }
+                    collidedCroc = current->croc;
+                    if(current->croc.splash > 0 && current->croc.splash < 30)
+                    {
+                        printDanger = true;
+                        yDanger = current->croc.y;
+                        dirDanger = current->croc.direction;
+                    }
                     break;
                 }
                 current = current->next; // passiamo al prossimo
@@ -460,7 +530,13 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 }
             }
         }
-            
+
+        // STAMPA IL SEGNALE DI PERICOLO
+        if(printDanger)
+        {
+            printDangerSign(dirDanger, yDanger); printDanger = false;
+        }  
+
         // SCHERMATE DI DEBUG
         if(GENERAL_DEBUG)
         {

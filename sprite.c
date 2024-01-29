@@ -537,4 +537,59 @@ void printProjectile(short x, short y, bool fromFrog)
         mvprintw(y, x, "█");
 }
 
+void printDangerSign(short direction, short y)
+{
+    static short lastY = -7; static short printCount = 0; // variabili statiche per l'animazione
+
+    if(lastY != y)
+    {
+        lastY = y; printCount = 0;
+    }
+
+    short x[2]; 
+    x[0] = COLUMNS_PER_MAP-DANGER_SIGN_COLUMNS;     // direzione = 0 significa che il coccodrillo sta andando a sinistra
+    x[1] = 1+1;                                     // direzione = 1 significa che il coccodrillo sta andando a destra
+    // il segnale verra' stampato all'estremo opposto
+
+    wchar_t sprite[ROWS_PER_BLOCK][DANGER_SIGN_COLUMNS] =
+    {
+        { L'n', L'n', L'▄', L'▀', L'▄', L'n', L'n' },
+        { L'n', L'█', L' ', L'█', L' ', L'█', L'n' },
+        { L'█', L' ', L' ', L'▄', L' ', L' ', L'█' },
+        { L'n', L'▀', L'▀', L'▀', L'▀', L'▀', L'n' }
+    };
+
+    short colors[ROWS_PER_BLOCK][DANGER_SIGN_COLUMNS] =
+    {
+        {               0,               0, ROSSO_E_CELESTE,  ROSSO_E_BIANCO, ROSSO_E_CELESTE,               0,               0 },
+        {               0, ROSSO_E_CELESTE,   NERO_E_BIANCO,   NERO_E_BIANCO,   NERO_E_BIANCO, ROSSO_E_CELESTE,               0 },
+        { ROSSO_E_CELESTE,   NERO_E_BIANCO,   NERO_E_BIANCO,   NERO_E_BIANCO,   NERO_E_BIANCO,   NERO_E_BIANCO, ROSSO_E_CELESTE },
+        {               0, ROSSO_E_CELESTE, ROSSO_E_CELESTE, ROSSO_E_CELESTE, ROSSO_E_CELESTE, ROSSO_E_CELESTE,               0 }
+    };
+
+    if(printCount >= 0)
+    {
+        for(short i = 0; i < ROWS_PER_BLOCK; i++)
+        {
+            for(short j = 0; j < DANGER_SIGN_COLUMNS; j++)
+            {
+                if(sprite[i][j] != L'n')
+                {
+                    CHANGE_COLOR(colors[i][j]);
+                    mvprintw(y+i, x[direction]+j, "%lc", sprite[i][j]);
+                }
+            }
+        }
+        printCount++;
+        if(printCount == 5)
+            printCount = -1;
+    }
+    else
+    {
+        printCount--;
+        if(printCount == -5)
+            printCount = -0;
+    }
+}
+
 // ▀ █ ▄

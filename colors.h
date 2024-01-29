@@ -212,3 +212,7 @@ void istanziaColori();
 // Coppie di colori da richiamare per le schermate di debug.
 #define RED_DEBUG 46
 #define GREEN_DEBUG 47
+
+// Coppie di colori da richiamare per il segnale di pericolo.
+#define ROSSO_E_BIANCO 48
+#define ROSSO_E_CELESTE 49

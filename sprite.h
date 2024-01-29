@@ -59,6 +59,9 @@
 // Numero di colonne per la stampa del coccodrillo in background.
 #define BC_CROC_COLUMNS (short)(19)
 
+// Numero di colonne per la stampa dei nemici.
+#define DANGER_SIGN_COLUMNS (short)(7)
+
 
 /*********************************\
 *  PROTOTIPI DI FUNZIONE (MAPPA)  *
@@ -107,3 +110,6 @@ void printBGCrocodile(short x, short y, short direction);
 
 // Stampa un proiettile.
 void printProjectile(short x, short y, bool fromFrog);
+
+// Stampa un segnale di allarme.
+void printDangerSign(short direction, short y);
