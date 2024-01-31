@@ -244,6 +244,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         } while (bytes_read != -1); 
 
+        // CHIEDE LA GENERAZIONE DI NUOVI NEMICI
         if(fps % 10 == 0 && fps > 0)
             for(short i = 0; i < MAX_ENEMIES; i++)
             {
@@ -281,29 +282,24 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             {
                 frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
             }
-        } 
-
-        bool frogEnemyCollided = false;                                                                         // rana - nemici
-        for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
-        {
-            frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
         }
 
-        bool twoProjectilesCollided = false;
-        bool frogPrjsEnemiesCollided = false;
-        bool frogPrjsCrocodileCollided = false;
-        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)                                                             // proiettili rana - proiettili nemici / nemici / coccodrilli
+        // COLLISIONI PROIETTILI RANA - nemici / coccodrilli / proiettili nemici
+        bool twoProjectilesCollided = false;                    // proiettile rana - proiettile nemico
+        bool frogPrjsEnemiesCollided = false;                   // proeittile rana - nemico
+        bool frogPrjsCrocodileCollided = false;                 // proiettile rana - coccodrillo
+        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
         {
-            if(printFProj[fr])
+            if(printFProj[fr]) // se il proiettile esiste
             {
-                short ROW = yToRowNumber(frogPrjs[fr].y);
+                short ROW = yToRowNumber(frogPrjs[fr].y); // calcolo la sua riga
 
                 if(ROW >= 1 && ROW <= RIVERSIDE_ROWS) 
                 {
                     // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
                     for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
                     {
-                        if(allEnemies[e].genTime == 0)
+                        if(allEnemies[e].genTime == 0) // se il nemico e' gia' stato completamente generato
                         {
                             frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
                             if(frogPrjsEnemiesCollided)
@@ -358,8 +354,11 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
         }
 
-        bool froggerEnteredLilypads = false;
-        bool frogOnCrocodile = false;
+        // COLLISIONI RANA - tane / nemici/ coccodrilli
+        bool frogEnemyCollided = false;                         // rana scontrata con un nemico
+        bool froggerEnteredLilypads = false;                    // rana dentro una tana
+        bool frogOnCrocodile = false;                           // rana sul coccodrillo
+        
         short frogRow = yToRowNumber(frogger.y);
         if(frogRow == 0) // se la rana e' all'altezza delle tane
         {
@@ -398,8 +397,20 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             if(!froggerEnteredLilypads)
             {
                 currentGame->lives = currentGame->lives - 1; endManche = true;
-                if(currentGame->lives == 0)
-                    keepPlaying = false;
+            }
+        }
+        else if(frogRow >= 1 && frogRow <= RIVERSIDE_ROWS) // se la rana e' all'altezza dell'argine superiore
+        {
+            for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
+            {
+                if(allEnemies[e].genTime == 0) 
+                {
+                    frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
+                }
+            }
+            if(frogEnemyCollided)
+            {
+                currentGame->lives = currentGame->lives - 1; endManche = true;
             }
         }
         else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
@@ -415,67 +426,66 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 {
                     if(collidedCroc.PID != current->croc.PID)   // se la rana e' appena salita su quel coccodrillo
                     {
-                        collidedCroc = current->croc;
+                        collidedCroc = current->croc;           // salviamo i dati sul coccodrillo
                         xDiff = frogger.x - collidedCroc.x;     // differenza rana-coccodrillo
-                        oldFrogX = frogger.x;
+                        oldFrogX = frogger.x;                   // salviamo le coordinate della rana
                     }
                     else                                        // se la rana e' rimasta sullo stesso coccodrillo
                     {
-                        bool updateF = false;
+                        bool updateFrog = false; short xDiff2;
 
-                        xFDiff = 0;
-                        if(oldFrogX != frogger.x)               // se la rana si e' spostata a destra o sinistra
+                        if(collidedCroc.x != current->croc.x || frogger.x != oldFrogX) 
                         {
-                            updateF = true;
-                            xFDiff = oldFrogX - frogger.x;      // si calcola la differenza
-                            if(xFDiff < 0)                      // si e' spostata verso destra
+                            xDiff2 = frogger.x - current->croc.x;   // calcoliamo la differenza attuale
+                            updateFrog = true;
+
+                            short realDiff = (xDiff - xDiff2);
+
+                            if(realDiff != 1 && realDiff != -1)         // si e' spostata anche la rana
                             {
-                                xFDiff = COLUMNS_PER_BLOCK;
+                                if(realDiff > 1)
+                                    realDiff -= COLUMNS_PER_BLOCK;
+                                else if(realDiff < -1)
+                                    realDiff += COLUMNS_PER_BLOCK;
                             }
-                            else                                // si e' spostata verso sinistra
-                            {
-                                xFDiff = 0 - COLUMNS_PER_BLOCK;
-                            }   
+                            frogger.x += realDiff; // cosi' la rana si e' mossa mantenendo la differenza iniziale
                         }
 
-                        short xDiff2 = 0;
-                        if(collidedCroc.x != current->croc.x)   // se il coccodrillo si e' mosso
+                        if(updateFrog)
                         {
-                            updateF = true;
-
-                            xDiff2 = oldFrogX - collidedCroc.x;
-                            xDiff2 = xDiff - xDiff2; 
-                        } 
-
-                        if(updateF)
-                        {
-                            frogger.x = oldFrogX + xFDiff;              // perche' la rana si e' spostata
-                            frogger.x += xDiff2;
-
-                            // per evitare che possa andare oltre i gli estremi della mappa
                             if (frogger.x < 1)
                                 frogger.x = 1;
                             else if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
                                 frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
 
-                            write(mainToFrog[WRITE], &frogger, sizeof(frogger));    // infine stampiamo
-
                             oldFrogX = frogger.x;
+
+                            write(mainToFrog[WRITE], &frogger, sizeof(frogger));
                         }
-                            
                     }
-                    collidedCroc = current->croc;
-                    if(current->croc.splash > 0 && current->croc.splash < 30)
+
+                    collidedCroc = current->croc;               // salvataggio
+                    xDiff = frogger.x - collidedCroc.x;
+
+                    if(collidedCroc.splash > 0 && collidedCroc.splash < 30)
                     {
                         printDanger = true;
-                        yDanger = current->croc.y;
-                        dirDanger = current->croc.direction;
+                        yDanger = collidedCroc.y;
+                        dirDanger = collidedCroc.direction;
                     }
                     break;
                 }
                 current = current->next; // passiamo al prossimo
             }
+            if(!frogOnCrocodile)
+            {
+                collidedCroc.PID = 0;
+                currentGame->lives = currentGame->lives - 1; endManche = true;
+            }
         }
+
+        if(currentGame->lives == 0)
+            keepPlaying = false;
 
         // INIZIO STAMPE
         customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
@@ -621,7 +631,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 if(frogOnCrocodile)  // FROG - CROCODILE
                 {
                     CHANGE_COLOR(GREEN_DEBUG);
-                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "  true   ");
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "%03d : %03d", collidedCroc.x, collidedCroc.y);
                     CHANGE_COLOR(DEFAULT);
                 } else {
                     short fRow = yToRowNumber(frogger.y);
@@ -683,7 +693,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             // LA RANA RITORNA ALLA POSIZIONE INIZIALE 
             frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1;    // x iniziale (centro mappa)
             frogger.y = ROWS_PER_MAP - 1;                                   // y iniziale (ultima riga)
-            write(mainToFrog[WRITE], &frogger, sizeof(Frog));
+            write(mainToFrog[WRITE], &frogger, sizeof(frogger));
             minRow = ROWS_PER_MAP - 1;
 
             // NUOVA SCENA PER IL FIUME (TUTTI COCCODRILLI UCCISI E RIFATTI)
@@ -704,19 +714,24 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             // NEMICI E PROIETTILI
             for(short en = 0; en < MAX_ENEMIES; en++)
             {
-                easyKill(allEnemies[en].PID);                                               // uccidiamo il nemico
-                easyKill(enemPrjs[en].PID);                                                 // uccidiamo il suo proiettile
+                if(printEnemies[en])                                                        // se il nemico esiste...
+                    easyKill(allEnemies[en].PID);                                           // lo uccidiamo
+                if(printEnProj[en])                                                         // se il proiettile esiste...
+                    easyKill(enemPrjs[en].PID);                                             // uccidiamo il suo proiettile
             }
+            
             short newEnemies = (short) NEW_ENEMIES_FLAG;
             if(keepPlaying)                                                             // se il gioco deve continuare
                 write(mainToEnH[WRITE], &newEnemies, sizeof(newEnemies));               // chiediamo la loro rigenerazione
             
             setToFalse(printEnProj, MAX_ENEMIES);      
             setToFalse(printEnemies, MAX_ENEMIES);  
-            setToFalse(printFProj, MAX_FROG_PROJ);   
+            setToFalse(printFProj, MAX_FROG_PROJ);
+            
             for(short fp = 0; fp < MAX_FROG_PROJ; fp++)
                 if(printFProj[fp])
                     write(mainToFPH[WRITE], &frogPrjs[fp].ID, sizeof(frogPrjs[fp].ID));  
+            
         }
 
         // UPDATE SCHERMO E TEMPO

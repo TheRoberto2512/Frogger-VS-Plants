@@ -13,7 +13,9 @@
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
-#define GENERAL_DEBUG true
+#define GODMODE false
+
+#define GENERAL_DEBUG false
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
 #define RIVER_DEBUG true

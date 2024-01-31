@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdlib.h>
 #include <curses.h>
 #include <locale.h>
 #include <stddef.h>
@@ -19,10 +20,15 @@ int main()
 {  
     setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
 
+    system("echo -e \"\\e[8;53;108t\""); // imposta la dimensione del terminale qualora sia troppo piccolo
+
     GameRules regole = getRules(MEDIUM);
     GameUpdates thisGame; thisGame.lives = LIVES; thisGame.score = 0;
 
     game(&regole, &thisGame);
+
+    // execlp("pkill", "pkill", "-f", "./game", (char *)NULL);
+    // system("pkill -f ./game");
 
     return 0;
 }
@@ -62,6 +68,10 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
             if(enH == 0)
             {
+                if(0)
+                {
+                    kill(getpid(), SIGSTOP);
+                }
                 enemiesHandler(enHToMain, mainToEnH, PHToMain, rules->speed);
             }
             else
