@@ -62,8 +62,8 @@ bool frogProjectileEnemyProjectileCollisionDetector(short frogProjX, short frogP
 bool isFrogEnteredInside(short frogX, short frogTop, short lilyPadX, short lilyPadTop)
 {
     // diamo per scontato che le Y corrispondano (la verifica sara' fatta dalla funzione chiamante)
-    short extra_columns = 2; // colonne "extra" per l'approssimazione  
-    short r = (lilyPadX + (lilyPadTop-1) + 2) - (frogTop-1);
+    short extra_columns = 3; // colonne "extra" per l'approssimazione  
+    short r = (lilyPadX + (lilyPadTop-1) + extra_columns) - (frogTop-1);
     if( ( frogX >= ( lilyPadX - extra_columns ) ) && ( frogX < r ) )
     {
         return true;

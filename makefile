@@ -23,4 +23,4 @@ colors.o: colors.c colors.h
 	gcc $(CFLAGS) colors.c $(LIBS)
 
 clean:
-	rm -f *.o *.gch game
+	rm -f *.o *.gch

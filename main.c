@@ -14,26 +14,27 @@
 #include "functionsP.h"
 #include "settings.h"
 
-void game(GameRules *rules, GameUpdates *thisGame);
+void game();
 
 int main()
 {  
     setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
 
-    system("echo -e \"\\e[8;53;108t\""); // imposta la dimensione del terminale qualora sia troppo piccolo
+    if(GENERAL_DEBUG)
+        system("echo -e \"\\e[8;53;160t\""); // imposta la dimensione del terminale qualora sia troppo piccolo
+    else
+        system("echo -e \"\\e[8;53;108t\"");
 
     GameRules regole = getRules(MEDIUM);
-    GameUpdates thisGame; thisGame.lives = LIVES; thisGame.score = 0;
 
-    game(&regole, &thisGame);
+    game(&regole);
 
     // execlp("pkill", "pkill", "-f", "./game", (char *)NULL);
     // system("pkill -f ./game");
-
     return 0;
 }
 
-void game(GameRules *rules, GameUpdates *thisGame)
+void game()
 {
     // PIPES (tutte impostate in modalita' non bloccante per la lettura)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
@@ -52,7 +53,8 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
     if(croc == 0)
     {
-        riverHandler(crocToMain, mainToRivH, rules);
+        kill(getpid(), SIGSTOP); // bisogna per forza fare SIGCONT prima di chiudere il programma
+        riverHandler(crocToMain, mainToRivH);
     }
     else if(croc > 0)
     {
@@ -60,7 +62,8 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
         if(frogPRJH == 0)
         {
-            frogProjectilesHandler(frogToFPH, PHToMain, mainToFPH, rules->speed);
+            kill(getpid(), SIGSTOP);
+            frogProjectilesHandler(frogToFPH, PHToMain, mainToFPH);
         }
         else
         {
@@ -68,11 +71,8 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
             if(enH == 0)
             {
-                if(0)
-                {
-                    kill(getpid(), SIGSTOP);
-                }
-                enemiesHandler(enHToMain, mainToEnH, PHToMain, rules->speed);
+                kill(getpid(), SIGSTOP); // bisogna per forza fare SIGCONT prima di chiudere il programma
+                enemiesHandler(enHToMain, mainToEnH, PHToMain);
             }
             else
             {
@@ -87,17 +87,33 @@ void game(GameRules *rules, GameUpdates *thisGame)
 
                 if(frog == 0)
                 {
-                    
                     close(frogToMain[READ]);  // pipe dove scrive le coordinate
                     close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
                     close(PHToMain[READ]);    // pipe dove comunica la creazione di un proiettile rana
+
                     frogHandler(frogToMain, mainToFrog, frogToFPH);
                 }
                 else if(frog > 0)
                 {
-                    close(frogToMain[WRITE]);
-                    close(mainToFrog[READ]);
-                    mainManager(rules, thisGame, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
+                    /*
+                    close(frogToMain[WRITE]); // pipe dove legge le coordinate dalla rana
+                    close(mainToFrog[READ]);  // pipe dove scrive le coordinate per la rana
+                    close(crocToMain[WRITE]); // pipe dove legge le coordinate dei coccodrilli
+                    close(mainToRivH[READ]);  // pipe dove scrive al riverHandler
+                    close(PHToMain[WRITE]);   // pipe dove legge le coordinate dei proiettili
+                    close(mainToFPH[READ]);   // pipe dove scrive al frogProjectilesHandler
+                    close(enHToMain[WRITE]);  // pipe dove legge le coordinate dei nemici
+                    close(mainToEnH[READ]);   // pipe dove scrive all'enemiesHandler */
+
+                    short difficult = EASY;
+
+                    write(mainToEnH[WRITE], &difficult, sizeof(difficult));
+                    write(mainToRivH[WRITE], &difficult, sizeof(difficult));
+                    write(mainToFPH[WRITE], &difficult, sizeof(difficult));
+
+                    kill(enH, SIGCONT); kill(croc, SIGCONT); kill(frogPRJH, SIGCONT);
+
+                    mainManager(difficult, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
 
                     endwin();
                     easyKill(frog); // uccide la rana
@@ -107,6 +123,7 @@ void game(GameRules *rules, GameUpdates *thisGame)
             easyKill(frogPRJH);
         }
     }
+    kill(croc, SIGCONT);
 
     easyKill(croc);
 

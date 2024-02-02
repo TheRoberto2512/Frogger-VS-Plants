@@ -85,7 +85,7 @@ GameRules getRules(short difficult);
 #define EASY_BAD_CROCODILE 0 // (non ci saranno coccodrilli cattivi)
 
 // Velocita' massima di movimento dei coccodrilli.
-#define EASY_SPEED 2
+#define EASY_SPEED 3
 
 
 // Tempo (in secondi) per la difficolta' intermedia.
@@ -111,4 +111,4 @@ GameRules getRules(short difficult);
 #define HARD_BAD_CROCODILE 3 // (1/3 saranno coccodrilli cattivi)
 
 // Velocita' massima di movimento dei coccodrilli.
-#define HARD_SPEED 1
+#define HARD_SPEED 2

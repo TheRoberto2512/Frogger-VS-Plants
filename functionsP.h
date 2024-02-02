@@ -15,7 +15,7 @@
 
 #define GODMODE false
 
-#define GENERAL_DEBUG false
+#define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
 #define RIVER_DEBUG true
@@ -41,13 +41,16 @@
 #define GOOD_CROC_FLAG -10
 
 // FLAG per indicare l'apocalisse dei coccodrilli.
-#define CROCS_APOCALYPSE -1289
+#define CROCS_APOCALYPSE -12589
 
 // FLAG per mettere in pausa la generazione di coccodrilli.
-#define CROC_STOP -1500
+#define CROC_STOP -15000
+
+// FLAG per richiedere una generazione istantanea di un coccodrillo.
+#define CROC_NOW -13427
 
 // FLAG per comunicare all'enemiesHandler di rigenerare tutti i nemici.
-#define NEW_ENEMIES_FLAG -500
+#define NEW_ENEMIES_FLAG -5000
  
 
 /*********************\
@@ -58,19 +61,19 @@
 void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[]);
 
 // Processo che gestisce i proiettili generati dalla rana.
-void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], short speed);
+void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[]);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-void mainManager(GameRules *rules, GameUpdates *gUpdt, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[]);
+short mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
-void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules);
+void riverHandler(int crocToMain[], int mainToRivH[]);
 
 // Processo che gestisce un singolo coccodrillo.
 void singleCrocodileHandler(int crocToMain[], Crocodile me);
 
 // Processo che gestisce lo spawn (e la generazione) dei nemici.
-void enemiesHandler(int enHToMain[], int mainToEnH[], int SEPHToMain[], short speed);
+void enemiesHandler(int enHToMain[], int mainToEnH[], int SEPHToMain[]);
 
 // Processo che gestisce un singolo nemico.
 void singleEnemyHandler(Enemy myself, int SEPHToMain[], short speed);

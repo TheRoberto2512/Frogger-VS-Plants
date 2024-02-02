@@ -95,8 +95,16 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[])
     } while (true);
 }
 
-void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], short speed)
+void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[])
 {
+    short difficult = -1;
+
+    do{
+        read(mainToFPH[READ], &difficult, sizeof(difficult));
+    } while(difficult == -1);
+    
+    GameRules rules = getRules(difficult);
+
     Frog frogger; // per le letture dalla rana (la rana comunica le sue coordinate)
     short updatesCounter = 0; 
     Projectile frogProjectiles[MAX_FROG_PROJ]; Projectile readed;
@@ -122,7 +130,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
                     frogProjectiles[i].ID = i;              // salviamo un ID provvisorio
                     frogProjectiles[i].x = frogger.x + 3;
                     frogProjectiles[i].y = frogger.y - 1;
-                    frogProjectiles[i].speed = speed;
+                    frogProjectiles[i].speed = rules.speed;
                     break;
                 }
             }
@@ -143,7 +151,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
         {
             if(doProjectileExist[i])
             {
-                if(updatesCounter % speed == 0)
+                if(updatesCounter % rules.speed == 0)
                 {
                     frogProjectiles[i].y -= 1;
                     if(frogProjectiles[i].y < 3)
@@ -159,17 +167,21 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[], sh
     } while (true);
 }
 
-void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
+short mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
 {
+    // GESTIONE DELLA PARTITA CORRENTE
+    GameUpdates currentGame; currentGame.lives = LIVES; currentGame.score = 0;
+    GameRules rules = getRules(difficult);
+    
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;
 
     // ARRAY E VARIABILI PER LETTURE E "CACHE" 
     Frog frogger; CrocList cList; Crocodile croc;   // per salvare la rana e la lista dei coccodrilli e per salvare un coccodrillo dove effettuare le letture
 
-    Crocodile collidedCroc;                         // per salvare il coccodrillo su cui la rana sale
-    collidedCroc.PID = 0;
-    short xDiff; short oldFrogX; short xFDiff;
+    Crocodile collidedCroc; collidedCroc.PID = 0;   // per salvare il coccodrillo su cui la rana sale
+    short xDiff; short oldFrogX; short xFDiff;      // variabili d'appoggio per i calcoli relativi alla rana sul coccodrilllo
+    short nullCounters[RIVER_ROWS];
 
     Enemy allEnemies[MAX_ENEMIES]; Enemy en;        // per salvare tutti i nemici e un nemico dove effettuare le letture
     bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
@@ -185,15 +197,16 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     short minRow = ROWS_PER_MAP - 1;                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
     ssize_t bytes_read = -1;                        // variabile da usare per verificare le letture dalle pipes non bloccanti
 
-    short yDanger = -1;
-    short dirDanger = -1;
-    bool printDanger = false;
+    short yDanger = -1;                             // coordinata dove verra' stampato il segnale d'allerta
+    short dirDanger = -1;                           // direzione dove verra' stampato il segnale d'allerta
+    bool printDanger = false;                       // FLAG per gestire la stampa del segnale d'allerta
 
     // OPERAZIONI PRELIMINARI
-    for(short i = 0; i < RIVER_ROWS; i++)           // evita SIGSEGV impostando i puntatori a NULL
+    for(short i = 0; i < RIVER_ROWS; i++)           
     {
-        cList.lanes[i] = NULL;
-        cList.counts[i] = 0;
+        cList.lanes[i] = NULL;                      // evita SIGSEGV impostando i puntatori a NULL
+        cList.counts[i] = 0;                        // ci assicuriamo che siano tutti settati a zero
+        nullCounters[i] = 0;
     }        
 
     setToFalse(printFProj,MAX_FROG_PROJ);
@@ -204,11 +217,10 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     double r = BLOCK_PER_MAP_ROWS / 5;
     short lilyPadsX[5] = { -1, -1, -1, -1, -1};
 
-    if(lilyPadsX[0] == -1)
-        for(short i = 0; i < 5; i++)
-        {
-            lilyPadsX[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
-        }
+    for(short i = 0; i < 5; i++)
+    {
+        lilyPadsX[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
+    }
 
     do{
         // LEGGE LA POSIZIONE DELLA RANA
@@ -216,7 +228,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         if(bytes_read != -1 && frogger.y < minRow)
         {
             minRow = frogger.y;
-            currentGame->score += ROW_UP;
+            currentGame.score += ROW_UP;
         }
 
         if(fps < 3 && seconds == 0) // evita casi di schermo che non si aggiorna 
@@ -232,6 +244,26 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 Update(&cList, reverseComputeY(croc.y), croc, fps);
         } while (bytes_read != -1);             
         DeleteUnnecessary(&cList, fps); // elimina i coccodrilli che non ricevono piu' aggiornamenti (usciti dallo schermo)
+
+        for(short i = 0; i < RIVER_ROWS && seconds > 1; i++)
+        {
+            if(cList.counts[i] >= 5)
+            {
+                FixLane(&cList, i);
+            }
+
+            if(cList.lanes[i] == NULL)
+            {
+                if(nullCounters[i] % 30 == 0)
+                {
+                    nullCounters[i] = 0;
+                    Crocodile alert; alert.x = CROC_NOW; alert.y = i; 
+                    write(mainToRivH[WRITE], &alert, sizeof(Crocodile));
+                }
+                else
+                    nullCounters[i]++;
+            }
+        }
 
         // LEGGE TUTTI I NEMICI
         bytes_read = -1;
@@ -281,6 +313,11 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             if(printEnProj[f])
             {
                 frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
+                if(frogEnPrjsCollided)
+                {
+                    currentGame.lives = currentGame.lives - 1; endManche = true;
+                    break;
+                }
             }
         }
 
@@ -304,7 +341,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                             frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogPrjs[fr].x, frogPrjs[fr].y);
                             if(frogPrjsEnemiesCollided)
                             {
-                                currentGame->score = currentGame->score + ENEMY_KILLED;                 // aggiungiamo i punti
+                                currentGame.score = currentGame.score + ENEMY_KILLED;                 // aggiungiamo i punti
                                 easyKill(allEnemies[e].PID);                                            // killiamo il processo nemico
                                 printEnemies[e] = false;                                                 
                                 write(mainToFPH[WRITE], &frogPrjs[fr].ID, sizeof(frogPrjs[fr].ID));     // comunichiamo al FrogProjectilesHandler la scomparsa del proiettile rana
@@ -372,8 +409,8 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                         emptyLilyPads[t] = false;
 
                         // SCOREBOARD
-                        currentGame->score += FILLED_LILYPAD; // aggiorno il punteggio
-                        currentGame->score += (rules->time - seconds) * POINTS_PER_SECOND;
+                        currentGame.score += FILLED_LILYPAD; // aggiorno il punteggio
+                        currentGame.score += (rules.time - seconds) * POINTS_PER_SECOND;
 
                         bool allFull = true;
                         for(short f = 0; f < 5; f++)
@@ -387,7 +424,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                         if(allFull)
                         {
                             keepPlaying = false;
-                            currentGame->score += VICTORY;
+                            currentGame.score += VICTORY;
                         }
                         else   
                             endManche = true;                     
@@ -396,7 +433,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
             if(!froggerEnteredLilypads)
             {
-                currentGame->lives = currentGame->lives - 1; endManche = true;
+                currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
         else if(frogRow >= 1 && frogRow <= RIVERSIDE_ROWS) // se la rana e' all'altezza dell'argine superiore
@@ -410,7 +447,7 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             }
             if(frogEnemyCollided)
             {
-                currentGame->lives = currentGame->lives - 1; endManche = true;
+                currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
         else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
@@ -480,16 +517,13 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
             if(!frogOnCrocodile)
             {
                 collidedCroc.PID = 0;
-                currentGame->lives = currentGame->lives - 1; endManche = true;
+                currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
 
-        if(currentGame->lives == 0)
-            keepPlaying = false;
-
         // INIZIO STAMPE
         customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
-        printScoreBoard(currentGame->lives, currentGame->score, rules->time - seconds, FULL_TIME);  // aggiorna la scoreboard
+        printScoreBoard(currentGame.lives, currentGame.score, rules.time - seconds, FULL_TIME);  // aggiorna la scoreboard
         printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                   // stampa la mappa
         printList(&cList);                                                                          // stampa i coccodrilli
 
@@ -577,7 +611,15 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
                 {
                     if(cList.counts[r] == 0)
                         CHANGE_COLOR(RED_DEBUG);
-                    mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %d", r, cList.counts[r]);
+                    mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %-2d", r, cList.counts[r]);
+                    if(cList.lanes[r] == NULL)
+                    {
+                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "  NULL  ");
+                    }
+                    else
+                    {
+                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "NOT NULL");
+                    }
                     CHANGE_COLOR(DEFAULT);
                 }
                 DebugLine += 2 + (RIVER_ROWS) + 1;
@@ -678,10 +720,13 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
         }          
 
         // SE IL TEMPO E' SCADUTO
-        if((rules->time-seconds) <= -1)
+        if((rules.time-seconds) <= -1)
         {
-            currentGame->lives = currentGame->lives - 1; endManche = true;
+            currentGame.lives = currentGame.lives - 1; endManche = true;
         }
+
+        if(currentGame.lives == 0)
+            keepPlaying = false;
 
         // COSA FARE PER RICOMINCIARE LA MANCHE
         if(endManche)
@@ -744,22 +789,32 @@ void mainManager(GameRules *rules, GameUpdates *currentGame, int frogToMain[], i
     } while(keepPlaying);
     
     killAll(&cList);
+
+    return currentGame.score;
 }
 
-void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
+void riverHandler(int crocToMain[], int mainToRivH[])
 {
+    short difficult = -1;
+
+    do{
+        read(mainToRivH[READ], &difficult, sizeof(difficult));
+    } while(difficult == -1);
+    
+    GameRules rules = getRules(difficult);
+
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};   // [i] dove deve spawnare il coccodrillo se la sua direzione e' i
     bool keepGenerating = true;
     short directions[RIVER_ROWS];                                                               // salva le direzioni delle corsie
     short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
-    short spawnTimers[RIVER_ROWS] = {30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000};   // inizializzati a valori altissimi
+    short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};   // inizializzati a valori altissimi
 
     randomSeed(); // impostiamo un seme random
 
-    riverSpeeds(speeds, rules->speed);
+    riverSpeeds(speeds, rules.speed);
     directions[0] = rand() % 2; // puo' essere 0 o 1
 
-    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, rules);
+    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, &rules);
         
     ssize_t bytes_read = -1;
     while (true)
@@ -778,28 +833,38 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
                             easyKill(regen.PID);
                     } while (bytes_read != -1);
 
-                    riverSpeeds(speeds, rules->speed);
+                    riverSpeeds(speeds, rules.speed);
                     directions[0] = rand() % 2; // puo' essere 0 o 1
-                    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, rules);
+                    newCrocodileScene(crocToMain, directions, speeds, spawnTimers, &rules);
                 }
                 else if(regen.x == CROC_STOP && regen.y == CROC_STOP)   // basta con la generazione
                 {
                     keepGenerating = false;
+                }
+                else if(regen.x == CROC_NOW) 
+                {
+                    short row = regen.y;
+                    spawnCrocodile(crocToMain, buildCrocodile(spawns[directions[row]], computeY(row), directions[row], speeds[row], rules.BadCrocodile));
+
+                    if(directions[row]) // se va a destra
+                        spawnTimers[row] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[row];
+                    else
+                        spawnTimers[row] = (crocodileSpace() + CROCODILE_COLUMNS) * speeds[row]; 
                 }
                 else
                 {
                     regen.splash = GOOD_CROC_FLAG; // il coccodrillo diventa buono
                     spawnCrocodile(crocToMain, regen); // viene generato un nuovo processo per il coccodrillo appena diventato buono
                 }
-
+                regen.x = 0;
             }
         } while(bytes_read != -1);
 
         for(short i = 0; i < RIVER_ROWS && keepGenerating; i++)
         {
-            if(spawnTimers[i] == 0)
+            if(spawnTimers[i] <= 0)
             {
-                spawnCrocodile(crocToMain, buildCrocodile(spawns[directions[i]], computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+                spawnCrocodile(crocToMain, buildCrocodile(spawns[directions[i]], computeY(i), directions[i], speeds[i], rules.BadCrocodile));
                 if(directions[i]) // se va a destra
                     spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[i];
                 else
@@ -808,7 +873,6 @@ void riverHandler(int crocToMain[], int mainToRivH[], GameRules *rules)
             else
                 spawnTimers[i]--;
         }
-
         usleep(FRAME_UPDATE);
     }
 }
@@ -855,8 +919,21 @@ void singleCrocodileHandler(int crocToMain[], Crocodile me)
     exit(0);
 }
 
-void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short speed)
+void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[])
 {
+    short difficult = -1;
+
+    do{
+        read(mainToEnH[READ], &difficult, sizeof(difficult));
+    } while(difficult == -1);
+    
+    if(difficult == EASY)
+    {
+        exit(0);
+    }
+
+    GameRules rules = getRules(difficult);
+
     randomSeed();
     Enemy allEnemies[MAX_ENEMIES];      // salva tutti i nemici correnti
     bool aliveEnemies[MAX_ENEMIES];     // true quando il nemico corrispondente e' vivo
@@ -875,7 +952,7 @@ void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short spee
     // CREA I PROCESSI NEMICI
     for(short p = 0; p < MAX_ENEMIES; p++)
     {
-        spawnEnemy(enHToMain, PHToMain, allEnemies, p, speed);
+        spawnEnemy(enHToMain, PHToMain, allEnemies, p, rules.speed);
     }
 
     short readed; ssize_t bytes_read = -1;
@@ -890,7 +967,7 @@ void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short spee
 
                     for(short e = 0; e < MAX_ENEMIES; e++)
                     {
-                        spawnEnemy(enHToMain, PHToMain, allEnemies, e, speed);
+                        spawnEnemy(enHToMain, PHToMain, allEnemies, e, rules.speed);
                     }
                 } else {
                     bool collided = false;
@@ -912,7 +989,7 @@ void enemiesHandler(int enHToMain[], int mainToEnH[], int PHToMain[], short spee
 
                     } while (collided);
 
-                    spawnEnemy(enHToMain, PHToMain, allEnemies, readed, speed);
+                    spawnEnemy(enHToMain, PHToMain, allEnemies, readed, rules.speed);
                 }
             }
         } while(bytes_read != -1);
@@ -1108,11 +1185,14 @@ void newCrocodileScene(int crocToMain[], short directions[], short speeds[], sho
             
             spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
 
+            short generated = 1;
+
             do{
                 currentX -= crocodileSpace(); // spazio tra un coccodrillo e l'altro
                 currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
                 spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
-            } while( currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK);
+                generated++;
+            } while( currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK && generated <= 3 );
 
             spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - currentX) * speeds[i];
         }
@@ -1123,18 +1203,19 @@ void newCrocodileScene(int crocToMain[], short directions[], short speeds[], sho
             short currentX = randomNumber(min, max);
             
             spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+            short generated = 1;
 
             do{
                 currentX += crocodileSpace(); // spazio tra un coccodrillo e l'altro
                 currentX += CROCODILE_COLUMNS; // la x e' la prima colonna
                 spawnCrocodile(crocToMain, buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
-            } while( currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK));
+                generated++;
+            } while( currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK) && generated <= 3 );
 
             currentX += CROCODILE_COLUMNS;
 
             spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - (COLUMNS_PER_MAP - currentX)) * speeds[i];
         }
-
     }
 }
 
