@@ -13,6 +13,7 @@
 #include "structs.h"
 #include "functionsP.h"
 #include "settings.h"
+#include "menu.h"
 
 void game();
 
@@ -87,6 +88,7 @@ void game()
 
                 if(frog == 0)
                 {
+                    kill(getpid(), SIGSTOP);
                     close(frogToMain[READ]);  // pipe dove scrive le coordinate
                     close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
                     close(PHToMain[READ]);    // pipe dove comunica la creazione di un proiettile rana
@@ -95,26 +97,71 @@ void game()
                 }
                 else if(frog > 0)
                 {
-                    /*
-                    close(frogToMain[WRITE]); // pipe dove legge le coordinate dalla rana
-                    close(mainToFrog[READ]);  // pipe dove scrive le coordinate per la rana
-                    close(crocToMain[WRITE]); // pipe dove legge le coordinate dei coccodrilli
-                    close(mainToRivH[READ]);  // pipe dove scrive al riverHandler
-                    close(PHToMain[WRITE]);   // pipe dove legge le coordinate dei proiettili
-                    close(mainToFPH[READ]);   // pipe dove scrive al frogProjectilesHandler
-                    close(enHToMain[WRITE]);  // pipe dove legge le coordinate dei nemici
-                    close(mainToEnH[READ]);   // pipe dove scrive all'enemiesHandler */
+                    short difficult = Menu();
 
-                    short difficult = EASY;
+                    if(difficult != -1) // se non e' stato scelto exit
+                    {
+                        write(mainToEnH[WRITE], &difficult, sizeof(difficult));
+                        write(mainToRivH[WRITE], &difficult, sizeof(difficult));
+                        write(mainToFPH[WRITE], &difficult, sizeof(difficult));
 
-                    write(mainToEnH[WRITE], &difficult, sizeof(difficult));
-                    write(mainToRivH[WRITE], &difficult, sizeof(difficult));
-                    write(mainToFPH[WRITE], &difficult, sizeof(difficult));
+                        kill(enH, SIGCONT); kill(croc, SIGCONT); kill(frogPRJH, SIGCONT); kill(frog, SIGCONT);
 
-                    kill(enH, SIGCONT); kill(croc, SIGCONT); kill(frogPRJH, SIGCONT);
+                        GameUpdates endedGame = mainManager(difficult, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
 
-                    mainManager(difficult, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
+                        clear(); int ch; bool continua = true;
+                        if(endedGame.lives == 0) // se e' a zero vuol dire che e' morto esaurendo le vite
+                            mvprintw(0,0, "Game over!%lc Il tuo punteggio e' %d!", L'💀', endedGame.score);
+                        else
+                            mvprintw(0,0, "Hai vinto!%lc Il tuo punteggio e' %d!", L'🐸', endedGame.score);
 
+                        char easy[POINT_NUM], medium[POINT_NUM], hard[POINT_NUM];
+
+                        GetScore(easy, medium, hard);
+
+                        do
+                        {
+                            if((ch = getch()) != ERR)
+                            {
+                                continua = false;
+                            }
+                        } while (continua);
+
+                        char printToFile[POINT_NUM+1];
+                        sprintf(printToFile, "%04d", endedGame.score);
+
+                        short prevScore = 2000;
+                        switch (difficult)
+                        {
+                            case EASY:
+                                prevScore = charToShort(easy);
+                                if(endedGame.score > prevScore)
+                                {
+                                    SetScore(printToFile, medium, hard);
+                                }
+                                break;
+
+                            case MEDIUM:
+                                prevScore = charToShort(medium);
+                                if(endedGame.score > prevScore)
+                                {
+                                    SetScore(easy, printToFile, hard);
+                                }
+                                break;
+
+                            case HARD:
+                                prevScore = charToShort(hard);
+                                if(endedGame.score > prevScore)
+                                {
+                                    SetScore(easy, medium, printToFile);
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        kill(enH, SIGCONT); kill(croc, SIGCONT); kill(frogPRJH, SIGCONT); kill(frog, SIGCONT);
+                    }
                     endwin();
                     easyKill(frog); // uccide la rana
                 }

@@ -9,3 +9,6 @@ game
 
 .vscode
 # per evitare che la cartella di sviluppo di vscode venga salvata su github
+
+SCORE.txt
+# per non salvare lo score

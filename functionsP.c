@@ -118,7 +118,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[])
         bytesR = read(frogToFPH[READ], &frogger, sizeof(Frog));
 
         // SE LA RANA HA CHIESTO DI GENERARE UN PROIETTILE
-        if(bytesR > -1)
+        if(bytesR > -1 && difficult>EASY)
         {
             for(short i = 0; i < MAX_FROG_PROJ; i++)
             {
@@ -167,7 +167,7 @@ void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[])
     } while (true);
 }
 
-short mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
+GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[])
 {
     // GESTIONE DELLA PARTITA CORRENTE
     GameUpdates currentGame; currentGame.lives = LIVES; currentGame.score = 0;
@@ -790,7 +790,7 @@ short mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocT
     
     killAll(&cList);
 
-    return currentGame.score;
+    return currentGame;
 }
 
 void riverHandler(int crocToMain[], int mainToRivH[])

@@ -64,7 +64,7 @@ void frogHandler(int frogToMain[], int mainToFrog[], int frogToFPH[]);
 void frogProjectilesHandler(int frogToFPH[], int PHToMain[], int mainToFPH[]);
 
 // Processo che verifica le collisioni e stampa l'interfaccia.
-short mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[]);
+GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int crocToMain[], int mainToRivH[], int PHToMain[], int mainToFPH[], int enHToMain[], int mainToEnH[]);
 
 // Processo che gestisce lo spawn dei coccodrilli.
 void riverHandler(int crocToMain[], int mainToRivH[]);
