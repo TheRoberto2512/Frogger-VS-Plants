@@ -22,10 +22,6 @@
 #define COLLISION_DEBUG true
 #define COLLISION_DEBUG_INFO true
 
-// Costanti per non confondere il comportamento delle pipe.
-#define READ 0
-#define WRITE 1
-
 // Costanti per calcolare la distanza tra un coccodrillo e l'altro.
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
 #define CROC_SPACE_MAX (COLUMNS_PER_BLOCK * 4)
@@ -56,13 +52,13 @@
 \********************/
 
 // Thread che gestisce la rana.
-
+void *frogHandler();
 
 // Thread che gestisce i proiettili generati dalla rana.
 
 
 // Thread che verifica le collisioni e stampa l'interfaccia.
-
+void *mainManager();
 
 // Thread che gestisce lo spawn dei coccodrilli.
 

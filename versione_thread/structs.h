@@ -11,7 +11,6 @@ typedef struct frog
 #define CROC_GUARD
 typedef struct crocodile
 {
-    pid_t PID;          // per identificare il coccodrillo
     short x;            // coordinata x
     short y;            // coordinata y
     short direction;    // direzione
@@ -24,7 +23,6 @@ typedef struct crocodile
 #define ENEMY_GUARD
 typedef struct enemy
 {
-    pid_t PID;          // pid del processo nemico
     short ID;           // numero del nemico
     short x;            // coordinata x
     short y;            // coordinata y
@@ -37,7 +35,6 @@ typedef struct enemy
 #define PROJ_GUARD
 typedef struct projectile
 {
-    pid_t PID;          // sorgente (0 per la rana, wxyz per i nemici)
     short ID;           // identificatore 
     short x;            // coordinata x
     short y;            // coordinata y
