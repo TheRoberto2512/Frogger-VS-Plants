@@ -313,7 +313,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
             if(printEnProj[f])
             {
                 frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemPrjs[f].x, enemPrjs[f].y);
-                if(frogEnPrjsCollided)
+                if(frogEnPrjsCollided && !GODMODE)
                 {
                     currentGame.lives = currentGame.lives - 1; endManche = true;
                     break;
@@ -431,7 +431,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
                     }
                 }
             }
-            if(!froggerEnteredLilypads)
+            if(!froggerEnteredLilypads && !GODMODE)
             {
                 currentGame.lives = currentGame.lives - 1; endManche = true;
             }
@@ -445,7 +445,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
                     frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
                 }
             }
-            if(frogEnemyCollided)
+            if(frogEnemyCollided && !GODMODE)
             {
                 currentGame.lives = currentGame.lives - 1; endManche = true;
             }
@@ -514,7 +514,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
                 }
                 current = current->next; // passiamo al prossimo
             }
-            if(!frogOnCrocodile)
+            if(!frogOnCrocodile && !GODMODE)
             {
                 collidedCroc.PID = 0;
                 currentGame.lives = currentGame.lives - 1; endManche = true;
@@ -720,7 +720,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
         }          
 
         // SE IL TEMPO E' SCADUTO
-        if((rules.time-seconds) <= -1)
+        if((rules.time-seconds) <= -1 && !GODMODE)
         {
             currentGame.lives = currentGame.lives - 1; endManche = true;
         }

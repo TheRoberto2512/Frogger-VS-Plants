@@ -15,7 +15,7 @@
 #include "settings.h"
 #include "menu.h"
 
-void game();
+bool game();
 
 int main()
 {  
@@ -28,15 +28,19 @@ int main()
 
     GameRules regole = getRules(MEDIUM);
 
-    game(&regole);
+    bool playAgain = game(&regole);
 
+    if(playAgain)
+        execl("./game", "./game", NULL);
+    
     // execlp("pkill", "pkill", "-f", "./game", (char *)NULL);
     // system("pkill -f ./game");
     return 0;
 }
 
-void game()
+bool game()
 {
+    bool playAgain = false;
     // PIPES (tutte impostate in modalita' non bloccante per la lettura)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
@@ -97,6 +101,8 @@ void game()
                 }
                 else if(frog > 0)
                 {
+                    bool wannaPlay = false;
+                    
                     short difficult = Menu();
 
                     if(difficult != -1) // se non e' stato scelto exit
@@ -115,6 +121,8 @@ void game()
                         else
                             mvprintw(0,0, "Hai vinto!%lc Il tuo punteggio e' %d!", L'🐸', endedGame.score);
 
+                        mvprintw(2,0, "Vuoi giocare ancora? (Y/N)");
+
                         char easy[POINT_NUM], medium[POINT_NUM], hard[POINT_NUM];
 
                         GetScore(easy, medium, hard);
@@ -123,7 +131,19 @@ void game()
                         {
                             if((ch = getch()) != ERR)
                             {
-                                continua = false;
+                                switch(ch)
+                                {
+                                    case 'y':
+                                    case 'Y':
+                                        continua = false;
+                                        playAgain = true;
+                                        break;
+
+                                    case 'N':
+                                    case 'n':
+                                        continua = false;
+                                        break;
+                                }
                             }
                         } while (continua);
 
@@ -184,4 +204,6 @@ void game()
             easyKill(crocc.PID);
         }
     } while (bytes_read != -1); // controlla che non sia rimasto nessun coccodrillo in vita, in caso li uccide
+
+    return playAgain;
 }

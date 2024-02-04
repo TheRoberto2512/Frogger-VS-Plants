@@ -26,6 +26,9 @@ typedef struct gameUpdates
 *  COSTANTI DI GIOCO MISTE  *
 \***************************/
 
+// Per rendere la rana immortale (utile per il debug).
+#define GODMODE false
+
 // Costante per riferirisi alla difficolta' facile.
 #define LIVES 3
 

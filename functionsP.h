@@ -13,8 +13,6 @@
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
-#define GODMODE false
-
 #define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
