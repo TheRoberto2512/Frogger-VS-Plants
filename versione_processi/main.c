@@ -32,9 +32,6 @@ int main()
 
     if(playAgain)
         execl("./game", "./game", NULL);
-    
-    // execlp("pkill", "pkill", "-f", "./game", (char *)NULL);
-    // system("pkill -f ./game");
     return 0;
 }
 
