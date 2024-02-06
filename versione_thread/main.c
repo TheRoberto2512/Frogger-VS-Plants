@@ -14,13 +14,17 @@
 #include "settings.h"
 #include "menu.h"
 
-volatile short difficult;
-volatile GameUpdates currentGame;
+volatile short difficult;                       pthread_mutex_t semDifficult;
+volatile GameUpdates currentGame;               pthread_mutex_t semCurses;
 
-volatile Frog Frogger;
-pthread_mutex_t semFrogger;
-pthread_mutex_t semCurses;
+volatile Frog Frogger;                          pthread_mutex_t semFrogger;
 
+Projectile frogProjectiles[MAX_FROG_PROJ];      pthread_mutex_t semFrogProjectiles;
+bool doProjectileExist[MAX_FROG_PROJ];          pthread_mutex_t semDoProjectileExist;
+bool genFrogProj;                               pthread_mutex_t semGenFrogProj;
+
+
+bool setStartingVariables();
 bool game();
 
 int main()
@@ -34,6 +38,38 @@ int main()
     return 0;
 }
 
+bool setStartingVariables()
+{
+    // PER NCURSES ==========================================================================
+    pthread_mutex_init(&semDifficult, NULL);
+    pthread_mutex_init(&semCurses, NULL);
+    // ======================================================================================
+
+
+    // PER GESTIRE LA RANA ==================================================================
+    Frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
+    Frogger.y = ROWS_PER_MAP - 1;                                // y iniziale (ultima riga)
+
+    pthread_mutex_init(&semFrogger, NULL);
+    // ======================================================================================
+
+
+    // PER I PROIETTILI DELLA RANA ==========================================================
+    for(short i = 0; i < MAX_FROG_PROJ; i++) 
+    {
+        frogProjectiles[i].x = -1; frogProjectiles[i].y = -1;
+        doProjectileExist[i] = false;
+    }  
+    genFrogProj = false;
+
+    pthread_mutex_init(&semFrogProjectiles, NULL);
+    pthread_mutex_init(&semDoProjectileExist, NULL);
+    pthread_mutex_init(&semGenFrogProj, NULL);
+    // ======================================================================================
+
+    // ALTRO . . .
+}
+
 bool game()
 {
     initscr(); noecho(); curs_set(0);
@@ -43,18 +79,14 @@ bool game()
     keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
     mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-    pthread_t tFrog;
+    pthread_t tFrog, tFrogProjectilesHandler;
     bool playAgain = false; bool continua = true;
 
-    // VALORI DI DEFAULT
-    Frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
-    Frogger.y = ROWS_PER_MAP - 1; // y iniziale (ultima riga)
+    setStartingVariables();
 
-    // SEMAFORI
-    pthread_mutex_init(&semFrogger, NULL);
-    pthread_mutex_init(&semCurses, NULL);
-
+    // CREAZIONE THREADS
     pthread_create(&tFrog, NULL, frogHandler, NULL);
+    pthread_create(&tFrogProjectilesHandler, NULL, frogProjectilesHandler, NULL);
 
     mainManager();
 
@@ -74,8 +106,7 @@ bool game()
     mvprintw(2,0, "Vuoi giocare ancora? (Y/N)"); refresh();
 
     int ch;
-    do
-    {
+    do {
         if((ch = getch()) != ERR)
         {
             switch(ch)

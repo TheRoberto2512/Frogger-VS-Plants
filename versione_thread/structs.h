@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #ifndef FROG_GUARD
 #define FROG_GUARD
 typedef struct frog
@@ -11,6 +13,7 @@ typedef struct frog
 #define CROC_GUARD
 typedef struct crocodile
 {
+    pthread_t PTID;     // per identificare il coccodrillo
     short x;            // coordinata x
     short y;            // coordinata y
     short direction;    // direzione
@@ -23,6 +26,7 @@ typedef struct crocodile
 #define ENEMY_GUARD
 typedef struct enemy
 {
+    pthread_t PTID;     // threadID del processo nemico
     short ID;           // numero del nemico
     short x;            // coordinata x
     short y;            // coordinata y
@@ -35,6 +39,7 @@ typedef struct enemy
 #define PROJ_GUARD
 typedef struct projectile
 {
+    pthread_t PTID;     // threadID del processo nemico
     short ID;           // identificatore 
     short x;            // coordinata x
     short y;            // coordinata y

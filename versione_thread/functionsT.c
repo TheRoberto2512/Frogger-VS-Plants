@@ -14,12 +14,14 @@
 #include "crocList.h"
 #include "collisionDetector.h"
 
-extern volatile short difficult;
-extern GameUpdates currentGame;
+extern volatile short difficult;                    extern pthread_mutex_t semDifficult;
+extern GameUpdates currentGame;                     extern pthread_mutex_t semCurses;
 
-extern volatile Frog Frogger;
-extern pthread_mutex_t semFrogger;
-extern pthread_mutex_t semCurses;
+extern volatile Frog Frogger;                       extern pthread_mutex_t semFrogger;
+
+extern Projectile frogProjectiles[MAX_FROG_PROJ];   extern pthread_mutex_t semFrogProjectiles;
+extern bool doProjectileExist[MAX_FROG_PROJ];       extern pthread_mutex_t semDoProjectileExist;
+extern bool genFrogProj;                            extern pthread_mutex_t semGenFrogProj;
 
 
 /********************\
@@ -77,6 +79,7 @@ void *frogHandler(void *arg)
                     break;
 
                 case ' ': // generazione di un proietile
+                    pthread_mutex_lock(&semGenFrogProj); genFrogProj = true; pthread_mutex_unlock(&semGenFrogProj);
                     break;
             }
             pthread_mutex_unlock(&semFrogger); 
@@ -86,14 +89,106 @@ void *frogHandler(void *arg)
     } while (true);
 }
 
+void *frogProjectilesHandler(void *arg)
+{
+    pthread_mutex_lock(&semDifficult);
+    GameRules rules = getRules(difficult);
+    pthread_mutex_unlock(&semDifficult);
+    
+    short updatesCounter = 0; 
+
+    bool proiettiliEsistenti[MAX_FROG_PROJ];
+
+    for(short i = 0; i < MAX_FROG_PROJ; i++)
+    {
+        proiettiliEsistenti[i] = false;
+    }
+
+    Frog actual;
+
+    do{
+        bool generate = false;
+        pthread_mutex_lock(&semGenFrogProj); generate = genFrogProj; pthread_mutex_unlock(&semGenFrogProj);
+
+        pthread_mutex_lock(&semDoProjectileExist);
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            proiettiliEsistenti[i] = doProjectileExist[i];
+        }
+        pthread_mutex_unlock(&semDoProjectileExist);
+
+        // SE LA RANA HA CHIESTO DI GENERARE UN PROIETTILE
+        if(generate)
+        {
+            pthread_mutex_lock(&semFrogger); actual = Frogger; pthread_mutex_unlock(&semFrogger);
+            for(short i = 0; i < MAX_FROG_PROJ; i++)
+            {
+                if(proiettiliEsistenti[i] == false)
+                {
+                    proiettiliEsistenti[i] = true;
+
+                    pthread_mutex_lock(&semFrogProjectiles);
+                    frogProjectiles[i].PTID = 0;             // perche' e' la rana (i proiettili nemici useranno 1-2-3)
+                    frogProjectiles[i].ID = i;               // salviamo un ID provvisorio
+                    frogProjectiles[i].x = actual.x + 3;
+                    frogProjectiles[i].y = actual.y - 1;
+                    frogProjectiles[i].speed = rules.speed;
+                    pthread_mutex_unlock(&semFrogProjectiles);
+                    pthread_mutex_lock(&semGenFrogProj); genFrogProj = false; pthread_mutex_unlock(&semGenFrogProj);
+                    break;
+                }
+            }
+
+            pthread_mutex_lock(&semDoProjectileExist);
+            for(short i = 0; i < MAX_FROG_PROJ; i++)
+            {
+                doProjectileExist[i] = proiettiliEsistenti[i];
+            }
+            pthread_mutex_unlock(&semDoProjectileExist);
+        }
+
+        // FA AVANZARE I PROIETTILI IN BASE ALLA LORO VELOCITA' E COMUNICA LE NUOVE COORDINATE
+        pthread_mutex_lock(&semFrogProjectiles);
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            if(proiettiliEsistenti[i])
+            {
+                if(updatesCounter % rules.speed == 0)
+                {
+                    frogProjectiles[i].y -= 1;
+                    if(frogProjectiles[i].y < 3)
+                    {
+                        proiettiliEsistenti[i] = false; // smette di esistere
+                        pthread_mutex_lock(&semDoProjectileExist);
+                        doProjectileExist[i] = false;
+                        pthread_mutex_unlock(&semDoProjectileExist);
+                    }                    
+                }
+            }
+        }
+        pthread_mutex_unlock(&semFrogProjectiles);
+
+        usleep(FRAME_UPDATE);
+
+    } while (true);
+}
+
 void *mainManager(void *args)
 {
     // GESTIONE DELLA PARTITA CORRENTE
     currentGame.lives = LIVES; currentGame.score = 0;
+    pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
-    rules.time = 2;
+    pthread_mutex_unlock(&semDifficult);
 
     Frog frogger;
+    Projectile proiettiliRana[MAX_FROG_PROJ];
+    bool doFrogProjectileExist[MAX_FROG_PROJ];
+
+    for(short i = 0; i < MAX_FROG_PROJ; i++)
+    {
+        doFrogProjectileExist[i] = false;
+    }
     
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
@@ -132,9 +227,41 @@ void *mainManager(void *args)
             currentGame.score += ROW_UP;
         }  
     
+        pthread_mutex_lock(&semDoProjectileExist);
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            doFrogProjectileExist[i] = doProjectileExist[i];
+        }
+        pthread_mutex_unlock(&semDoProjectileExist);
+
+        pthread_mutex_lock(&semFrogProjectiles);
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            proiettiliRana[i] = frogProjectiles[i];
+        }
+        pthread_mutex_unlock(&semFrogProjectiles);
 
         // STAMPA LA RANA
         pthread_mutex_lock(&semCurses);  printFrog(frogger.x, frogger.y);  pthread_mutex_unlock(&semCurses);
+
+        // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
+        for(short p = 0; p < MAX_FROG_PROJ; p++)
+        {
+            if(doFrogProjectileExist[p])
+            {
+                pthread_mutex_lock(&semCurses);
+                printProjectile(proiettiliRana[p].x, proiettiliRana[p].y, true);
+                pthread_mutex_unlock(&semCurses);
+            
+                if(proiettiliRana[p].y <= 3)
+                {
+                    doFrogProjectileExist[p] = false;
+                    pthread_mutex_lock(&semDoProjectileExist);
+                    doProjectileExist[p] = false;
+                    pthread_mutex_unlock(&semDoProjectileExist);
+                }
+            }
+        }
 
         // SCHERMATE DI DEBUG
         if(GENERAL_DEBUG)

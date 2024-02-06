@@ -14,13 +14,13 @@
 #define DEBUG_TOP 11
 
 #define GENERAL_DEBUG false
-#define FROG_DEBUG true
-#define FROG_PROJECTILES_DEBUG true
-#define RIVER_DEBUG true
-#define ENEMIES_DEBUG true
-#define ENEMIES_PROJECTILES_DEBUG true
-#define COLLISION_DEBUG true
-#define COLLISION_DEBUG_INFO true
+#define FROG_DEBUG false
+#define FROG_PROJECTILES_DEBUG false
+#define RIVER_DEBUG false
+#define ENEMIES_DEBUG false
+#define ENEMIES_PROJECTILES_DEBUG false
+#define COLLISION_DEBUG false
+#define COLLISION_DEBUG_INFO false
 
 // Costanti per non confondere il comportamento delle pipe.
 #define READ 0

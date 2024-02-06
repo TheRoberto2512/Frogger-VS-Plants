@@ -1,6 +1,8 @@
 #include "structs.h"
 #include "settings.h"
 
+#include <pthread.h>
+
 
 /************\
 *  COSTANTI  *
@@ -55,7 +57,7 @@
 void *frogHandler();
 
 // Thread che gestisce i proiettili generati dalla rana.
-
+void *frogProjectilesHandler();
 
 // Thread che verifica le collisioni e stampa l'interfaccia.
 void *mainManager();
