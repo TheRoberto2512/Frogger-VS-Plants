@@ -330,16 +330,6 @@ void *mainManager(void *args)
                 
             }
         }
-
-        /*
-        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
-        for(short i = 0; i < MAX_ENEMIES; i++)
-        {
-            aliveEnemies[i] = printEnemies[i];
-            allEnemies[i] = AllEnemies[i];
-        }
-        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies); */
-
         
 
 
@@ -352,20 +342,41 @@ void *mainManager(void *args)
             DebugLine = 0;
             if(FROG_DEBUG)                                      
             {
+                pthread_mutex_lock(&semCurses); 
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 3, false);
                 mvprintw(DebugLine, DEBUG_COLUMNS+1, "FROGGER");
                 mvprintw(DebugLine+1, DEBUG_COLUMNS, "%03d : %03d", frogger.x, frogger.y);
                 DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
+                pthread_mutex_unlock(&semCurses);
             }
             if(FROG_PROJECTILES_DEBUG)
             {
-
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 2+MAX_FROG_PROJ, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "FR-PROJ");
+                for(short s = 0; s < MAX_FROG_PROJ; s++)
+                    if(doFrogProjectileExist[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", proiettiliRana[s].x, proiettiliRana[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                DebugLine += 2 + (MAX_FROG_PROJ) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
+                pthread_mutex_unlock(&semCurses);
             }
             if(RIVER_DEBUG)
             {
             }
             if(ENEMIES_DEBUG)
             {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 2+MAX_ENEMIES, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    if(printEnemies[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", AllEnemies[s].x, AllEnemies[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                DebugLine += 2 + (MAX_ENEMIES) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
+                pthread_mutex_unlock(&semCurses);
             }
             if(ENEMIES_PROJECTILES_DEBUG)
             {
