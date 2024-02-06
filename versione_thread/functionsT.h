@@ -69,7 +69,7 @@ void *mainManager();
 
 
 // Thread che gestisce lo spawn (e la generazione) dei nemici.
-
+void *enemiesHandler();
 
 // Thread che gestisce un singolo nemico.
 

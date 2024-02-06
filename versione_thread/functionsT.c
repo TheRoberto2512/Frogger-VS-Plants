@@ -23,6 +23,10 @@ extern Projectile frogProjectiles[MAX_FROG_PROJ];   extern pthread_mutex_t semFr
 extern bool doProjectileExist[MAX_FROG_PROJ];       extern pthread_mutex_t semDoProjectileExist;
 extern bool genFrogProj;                            extern pthread_mutex_t semGenFrogProj;
 
+extern Enemy allEnemies[MAX_ENEMIES];               extern pthread_mutex_t semAllEnemies;
+extern bool aliveEnemies[MAX_ENEMIES];              extern pthread_mutex_t semAliveEnemies;
+extern short rowsY[RIVERSIDE_ROWS];                 //extern pthread_mutex_t semRowsY;
+
 
 /********************\
 *  FUNZIONI THREAD  *
@@ -184,11 +188,11 @@ void *mainManager(void *args)
     Frog frogger;
     Projectile proiettiliRana[MAX_FROG_PROJ];
     bool doFrogProjectileExist[MAX_FROG_PROJ];
+    setToFalse(doFrogProjectileExist, MAX_FROG_PROJ);
 
-    for(short i = 0; i < MAX_FROG_PROJ; i++)
-    {
-        doFrogProjectileExist[i] = false;
-    }
+    bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
+    Enemy AllEnemies[MAX_ENEMIES]; 
+    setToFalse(printEnemies, MAX_ENEMIES);
     
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
@@ -227,6 +231,16 @@ void *mainManager(void *args)
             currentGame.score += ROW_UP;
         }  
     
+        // LEGGE I NEMICI
+        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
+            printEnemies[i] = aliveEnemies[i];
+            AllEnemies[i] = allEnemies[i];
+        }
+        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies);
+
+        // SALVA I PROIETTILI ESISTENTI
         pthread_mutex_lock(&semDoProjectileExist);
         for(short i = 0; i < MAX_FROG_PROJ; i++)
         {
@@ -241,8 +255,43 @@ void *mainManager(void *args)
         }
         pthread_mutex_unlock(&semFrogProjectiles);
 
-        // STAMPA LA RANA
-        pthread_mutex_lock(&semCurses);  printFrog(frogger.x, frogger.y);  pthread_mutex_unlock(&semCurses);
+        bool frogPrjsEnemiesCollided = false;
+        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
+        {
+            if(doFrogProjectileExist[fr]) // se il proiettile esiste
+            {
+                short ROW = yToRowNumber(proiettiliRana[fr].y);
+
+                if(ROW >= 1 && ROW <= RIVERSIDE_ROWS)
+                {
+                    // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
+                    for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
+                    {
+                        if(allEnemies[e].genTime == 0 && printEnemies[e])
+                        {
+                            frogPrjsEnemiesCollided = enemyFrogProjCD(AllEnemies[e].x, AllEnemies[e].y, proiettiliRana[fr].x, proiettiliRana[fr].y);
+                            if(frogPrjsEnemiesCollided)
+                            {
+                                currentGame.score = currentGame.score + ENEMY_KILLED; 
+                                // killare il thread nemico
+                                doFrogProjectileExist[fr] = false;
+
+                                pthread_mutex_lock(&semDoProjectileExist);
+                                doProjectileExist[fr] = false;
+                                pthread_mutex_unlock(&semDoProjectileExist);
+
+                                pthread_mutex_lock(&semAliveEnemies);
+                                aliveEnemies[e] = false; 
+                                pthread_mutex_unlock(&semAliveEnemies);
+
+                                printEnemies[e] = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
 
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
@@ -262,6 +311,40 @@ void *mainManager(void *args)
                 }
             }
         }
+
+        // STAMPA TUTTI I NEMICI
+        for(short e = 0; e < MAX_ENEMIES; e++)
+        {
+            if(printEnemies[e])
+            {
+                pthread_mutex_lock(&semCurses);
+                printEnemy(AllEnemies[e].x, AllEnemies[e].y, AllEnemies[e].genTime);
+                if(AllEnemies[e].genTime > 0)
+                {
+                    AllEnemies[e].genTime--;
+                    pthread_mutex_lock(&semAllEnemies);
+                    allEnemies[e].genTime--;
+                    pthread_mutex_unlock(&semAllEnemies);
+                }
+                pthread_mutex_unlock(&semCurses);
+                
+            }
+        }
+
+        /*
+        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
+            aliveEnemies[i] = printEnemies[i];
+            allEnemies[i] = AllEnemies[i];
+        }
+        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies); */
+
+        
+
+
+        // STAMPA LA RANA
+        pthread_mutex_lock(&semCurses);  printFrog(frogger.x, frogger.y);  pthread_mutex_unlock(&semCurses);
 
         // SCHERMATE DI DEBUG
         if(GENERAL_DEBUG)
@@ -322,3 +405,208 @@ void *mainManager(void *args)
     
     } while(keepPlaying);
 }
+
+void *enemiesHandler(void *args)
+{
+    short update = 1;
+    pthread_mutex_lock(&semDifficult);
+    GameRules rules = getRules(difficult);
+    pthread_mutex_unlock(&semDifficult);
+
+    randomSeed();
+
+    pthread_mutex_lock(&semAllEnemies);
+    newEnemiesScene(rowsY, allEnemies);
+    pthread_mutex_unlock(&semAllEnemies);
+
+    pthread_mutex_lock(&semAliveEnemies);
+    for(short i = 0; i < MAX_ENEMIES; i++)
+    {
+        aliveEnemies[i] = true;
+    }
+    pthread_mutex_unlock(&semAliveEnemies);
+
+    Enemy allEn[MAX_ENEMIES];
+    bool aliveEn[MAX_ENEMIES];
+
+    usleep(FRAME_UPDATE); update++;
+
+    do{
+
+        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
+            aliveEn[i] = aliveEnemies[i];
+            allEn[i] = allEnemies[i];
+        }
+        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies);
+
+        //if(update % 10 == 0)
+            for(short en = 0; en < MAX_ENEMIES; en++)
+            {
+                bool collided = false;
+                if(aliveEn[en] == false)
+                {
+                    do{
+                        allEn[en].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+                        allEn[en].y = rowsY[rand() % RIVERSIDE_ROWS];
+                        allEn[en].shot = randomNumber(30, 100);
+                        allEn[en].ID = en;
+                        allEn[en].genTime = randomNumber(15, 90); // da mezzo a tre secondi
+
+                        for(short e = 0; e < MAX_ENEMIES; e++)
+                        {
+                            if(e != en)
+                                collided = enemyEnemyCD(allEn[en].x, allEn[en].y, allEn[e].x, allEn[e].y);
+                            if(collided)
+                                break;
+                        }
+                    
+                    } while (collided);
+
+                    pthread_mutex_lock(&semAliveEnemies); 
+                    allEnemies[en] = allEn[en]; 
+                    pthread_mutex_unlock(&semAliveEnemies); 
+
+                    pthread_mutex_lock(&semAllEnemies);
+                    aliveEnemies[en] = true;
+                    pthread_mutex_unlock(&semAllEnemies);
+                    break;
+                }
+            }
+
+        usleep(FRAME_UPDATE);
+        update++;
+    } while (true);
+}
+
+
+/*********************\
+*  FUNZIONI UTILITA'  *
+\*********************/
+
+int easyKill(pthread_t PID)
+{
+    // uccide il thread
+    // libera le risorse
+    return -1;
+}
+
+short computeY(short n)
+{
+    short y = n * ROWS_PER_BLOCK;
+    y += (ROWS_PER_BLOCK * (1 + LILY_PADS_ROWS + RIVERSIDE_ROWS)); // considera la scoreaboard, le tane e le righe del fiume.
+    return y;
+}
+
+short reverseComputeY(short y)
+{
+    return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK ) - LILY_PADS_ROWS - RIVERSIDE_ROWS - 1; // 1 per la scoreboard
+}
+
+Crocodile buildCrocodile(short x, short y, short direction, short speed, short splashP)
+{
+    Crocodile croc;
+    croc.x = x;
+    croc.y = y;
+    croc.direction = direction;
+    croc.speed = speed;
+    croc.splash = GOOD_CROC_FLAG;
+    if(splashP)
+    {
+        short prob = rand() % splashP;
+        if(prob == 0)
+        {
+            short min = ((CROCODILE_COLUMNS) + 5) * speed;
+            short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * speed ;
+            croc.splash = randomNumber(min, max);
+        }
+    }
+    return croc;
+}
+
+void randomSeed()
+{
+    pthread_t ptid = pthread_self();
+
+    struct timespec CurrentTime;
+
+    clock_gettime(CLOCK_REALTIME, &CurrentTime);
+
+    srand(time(NULL) % ptid * CurrentTime.tv_nsec);
+    // prendiamo il numero di secondi trascorsi dal 1° gennaio 1970, facciamo il modulo per il pid e moltiplichiamo i nanosecondi correnti
+}
+
+short randomNumber(short min, short max)
+{
+    randomSeed();
+    short n = min + (rand() % (max - min + 1));
+    return n;
+}
+
+short spawnCrocodile()
+{
+    return -1;
+}
+
+void riverSpeeds(short speeds[], short rulesSpeed)
+{
+    speeds[0] = (rand() % 2) + rulesSpeed;
+    speeds[1] = (rand() % 2) + rulesSpeed;
+    for(short i = 2; i < RIVER_ROWS;)
+    {
+        short r = (rand() % 2) + rulesSpeed;
+        if(speeds[i - 2] != speeds[i - 1])
+        {
+            speeds[i] = r;
+            i++;
+        }
+        else if(r != speeds[i - 1])
+        {
+            speeds[i] = r;
+            i++;
+        }      
+    }
+}
+
+short crocodileSpace()
+{
+    short min = (short) CROC_SPACE_MIN;
+    short max = (short) CROC_SPACE_MAX;
+    return randomNumber(min, max);
+}
+
+short yToRowNumber(short y)
+{
+    return ((y - (y % ROWS_PER_BLOCK ) ) / ROWS_PER_BLOCK ) - LILY_PADS_ROWS;
+}
+
+void setToFalse(bool array[], short size)
+{
+    for(short i = 0; i < size; i++)
+        array[i] = false;
+}
+
+void newEnemiesScene(short rowsY[], Enemy allEnemies[])
+{
+    for(short i = 0; i < MAX_ENEMIES;)
+    {
+        allEnemies[i].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
+        allEnemies[i].y = rowsY[rand() % RIVERSIDE_ROWS];
+        allEnemies[i].shot = randomNumber(30, 100);
+        allEnemies[i].ID = i;
+        allEnemies[i].genTime = randomNumber(0, 30); // da 0 a 1 secondi
+
+        bool collided = false;
+        for(short c = 0; c < i; c++)
+        {
+            collided = enemyEnemyCD(allEnemies[i].x, allEnemies[i].y, allEnemies[c].x, allEnemies[c].y);
+            if(collided)
+            break;
+        }
+
+        if(collided == false)
+            i++;
+    }
+}
+

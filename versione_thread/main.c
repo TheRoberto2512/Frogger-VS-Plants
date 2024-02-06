@@ -23,6 +23,9 @@ Projectile frogProjectiles[MAX_FROG_PROJ];      pthread_mutex_t semFrogProjectil
 bool doProjectileExist[MAX_FROG_PROJ];          pthread_mutex_t semDoProjectileExist;
 bool genFrogProj;                               pthread_mutex_t semGenFrogProj;
 
+Enemy allEnemies[MAX_ENEMIES];                  pthread_mutex_t semAllEnemies;
+bool aliveEnemies[MAX_ENEMIES];                 pthread_mutex_t semAliveEnemies;
+short rowsY[RIVERSIDE_ROWS];                    //pthread_mutex_t semRowsY;
 
 bool setStartingVariables();
 bool game();
@@ -67,7 +70,23 @@ bool setStartingVariables()
     pthread_mutex_init(&semGenFrogProj, NULL);
     // ======================================================================================
 
-    // ALTRO . . .
+    // I NEMICI =============================================================================
+    for(short e = 0; e < MAX_ENEMIES; e++)
+    {
+        aliveEnemies[e] = false;
+        allEnemies[e].x = -1; allEnemies[e].y = -1;
+    }
+
+    rowsY[0] = (LILY_PADS_ROWS * ROWS_PER_BLOCK) + SCOREBOARD_ROWS;
+    for(short r = 1; r < RIVERSIDE_ROWS; r++)
+    {   
+        rowsY[r] = rowsY[r-1] + ROWS_PER_BLOCK;
+    }
+
+    pthread_mutex_init(&semAllEnemies, NULL);
+    pthread_mutex_init(&semAliveEnemies, NULL);
+    //pthread_mutex_init(&semRowsY, NULL);
+    // ======================================================================================
 }
 
 bool game()
@@ -79,7 +98,7 @@ bool game()
     keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
     mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-    pthread_t tFrog, tFrogProjectilesHandler;
+    pthread_t tFrog, tFrogProjectilesHandler, tEnemiesHandler;
     bool playAgain = false; bool continua = true;
 
     setStartingVariables();
@@ -87,6 +106,7 @@ bool game()
     // CREAZIONE THREADS
     pthread_create(&tFrog, NULL, frogHandler, NULL);
     pthread_create(&tFrogProjectilesHandler, NULL, frogProjectilesHandler, NULL);
+    pthread_create(&tEnemiesHandler, NULL, enemiesHandler, NULL);
 
     mainManager();
 
