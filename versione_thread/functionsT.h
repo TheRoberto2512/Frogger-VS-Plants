@@ -88,6 +88,9 @@ void randomSeed();
 // Funzione per generare un numero random tra min e max (inclusi).
 short randomNumber(short min, short max);
 
+// Funzione per killare correttamente un thread.
+void easyKill(pthread_t PTID);
+
 // Funzione per calcolare la Y di un coccodrillo in base al numero della corsia (0-7).
 short computeY(short n);
 

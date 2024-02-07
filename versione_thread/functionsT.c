@@ -267,18 +267,22 @@ void *mainManager(void *args)
                     // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
                     for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
                     {
-                        if(allEnemies[e].genTime == 0 && printEnemies[e])
+                        if(AllEnemies[e].genTime == 0 && printEnemies[e])
                         {
                             frogPrjsEnemiesCollided = enemyFrogProjCD(AllEnemies[e].x, AllEnemies[e].y, proiettiliRana[fr].x, proiettiliRana[fr].y);
                             if(frogPrjsEnemiesCollided)
                             {
                                 currentGame.score = currentGame.score + ENEMY_KILLED; 
-                                // killare il thread nemico
+                                
                                 doFrogProjectileExist[fr] = false;
 
                                 pthread_mutex_lock(&semDoProjectileExist);
                                 doProjectileExist[fr] = false;
                                 pthread_mutex_unlock(&semDoProjectileExist);
+
+                                pthread_mutex_lock(&semAllEnemies);
+                                easyKill(allEnemies[e].PTID);
+                                pthread_mutex_unlock(&semAllEnemies);                
 
                                 pthread_mutex_lock(&semAliveEnemies);
                                 aliveEnemies[e] = false; 
@@ -330,18 +334,6 @@ void *mainManager(void *args)
                 
             }
         }
-
-        /*
-        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
-        for(short i = 0; i < MAX_ENEMIES; i++)
-        {
-            aliveEnemies[i] = printEnemies[i];
-            allEnemies[i] = AllEnemies[i];
-        }
-        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies); */
-
-        
-
 
         // STAMPA LA RANA
         pthread_mutex_lock(&semCurses);  printFrog(frogger.x, frogger.y);  pthread_mutex_unlock(&semCurses);
@@ -485,11 +477,10 @@ void *enemiesHandler(void *args)
 *  FUNZIONI UTILITA'  *
 \*********************/
 
-int easyKill(pthread_t PID)
+void easyKill(pthread_t PTID)
 {
-    // uccide il thread
-    // libera le risorse
-    return -1;
+    pthread_cancel(PTID);
+    pthread_join(PTID, NULL);
 }
 
 short computeY(short n)
