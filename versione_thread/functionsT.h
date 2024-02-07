@@ -15,14 +15,14 @@
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
-#define GENERAL_DEBUG false
+#define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
-#define RIVER_DEBUG true
+#define RIVER_DEBUG false
 #define ENEMIES_DEBUG true
 #define ENEMIES_PROJECTILES_DEBUG true
-#define COLLISION_DEBUG true
-#define COLLISION_DEBUG_INFO true
+#define COLLISION_DEBUG false
+#define COLLISION_DEBUG_INFO false
 
 // Costanti per calcolare la distanza tra un coccodrillo e l'altro.
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
@@ -72,10 +72,10 @@ void *mainManager();
 void *enemiesHandler();
 
 // Thread che gestisce un singolo nemico.
-
+void *singleEnemyHandler(void *arg);
 
 // Thread che gestisce un singolo proiettile nemico.
-
+void *singleEnemyProjectileHandler(void *arg);
 
 
 /*********************\
@@ -122,4 +122,4 @@ void setToFalse(bool array[], short size);
 void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
 
 // Funzione per creare il thread nemico.
-
+void spawnEnemy(short enemyID);
