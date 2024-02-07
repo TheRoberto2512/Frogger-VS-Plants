@@ -20,7 +20,7 @@
 #define FROG_PROJECTILES_DEBUG true
 #define RIVER_DEBUG false
 #define ENEMIES_DEBUG true
-#define ENEMIES_PROJECTILES_DEBUG false
+#define ENEMIES_PROJECTILES_DEBUG true
 #define COLLISION_DEBUG false
 #define COLLISION_DEBUG_INFO false
 
@@ -72,10 +72,10 @@ void *mainManager();
 void *enemiesHandler();
 
 // Thread che gestisce un singolo nemico.
-
+void *singleEnemyHandler(void *arg);
 
 // Thread che gestisce un singolo proiettile nemico.
-
+void *singleEnemyProjectileHandler(void *arg);
 
 
 /*********************\
@@ -119,4 +119,4 @@ void setToFalse(bool array[], short size);
 void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
 
 // Funzione per creare il thread nemico.
-
+void spawnEnemy(short enemyID);

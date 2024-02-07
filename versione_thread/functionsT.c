@@ -27,6 +27,8 @@ extern Enemy allEnemies[MAX_ENEMIES];               extern pthread_mutex_t semAl
 extern bool aliveEnemies[MAX_ENEMIES];              extern pthread_mutex_t semAliveEnemies;
 extern short rowsY[RIVERSIDE_ROWS];                 //extern pthread_mutex_t semRowsY;
 
+extern Projectile enemyProjectiles[MAX_ENEMIES];    extern pthread_mutex_t semEmenyProjectiles;
+extern bool enemyProjectilesAlive[MAX_ENEMIES];     extern pthread_mutex_t semEnemyProjectilesAlive;
 
 /********************\
 *  FUNZIONI THREAD  *
@@ -193,6 +195,9 @@ void *mainManager(void *args)
     bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
     Enemy AllEnemies[MAX_ENEMIES]; 
     setToFalse(printEnemies, MAX_ENEMIES);
+
+    bool printAllEnemyProjectiles[MAX_ENEMIES];   
+    Projectile AllProjectilesEnemies[MAX_ENEMIES];
     
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
@@ -240,7 +245,7 @@ void *mainManager(void *args)
         }
         pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies);
 
-        // SALVA I PROIETTILI ESISTENTI
+        // SALVA I PROIETTILI ESISTENTI (RANA)
         pthread_mutex_lock(&semDoProjectileExist);
         for(short i = 0; i < MAX_FROG_PROJ; i++)
         {
@@ -255,6 +260,22 @@ void *mainManager(void *args)
         }
         pthread_mutex_unlock(&semFrogProjectiles);
 
+        // SALVA I PROIETTILI ESISTENTI (NEMICI)
+        pthread_mutex_lock(&semEmenyProjectiles); 
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
+            AllProjectilesEnemies[i] = enemyProjectiles[i];
+        }
+        pthread_mutex_unlock(&semEmenyProjectiles); 
+
+        pthread_mutex_lock(&semEnemyProjectilesAlive);
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
+            printAllEnemyProjectiles[i] = enemyProjectilesAlive[i]; 
+        }
+        pthread_mutex_unlock(&semEnemyProjectilesAlive);
+
+        // COLLISIONI
         bool frogPrjsEnemiesCollided = false;
         for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
         {
@@ -291,7 +312,6 @@ void *mainManager(void *args)
                 }
             }
         }
-
 
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
@@ -331,6 +351,37 @@ void *mainManager(void *args)
             }
         }
         
+        // STAMPA TUTTI I PROIETTILI NEMICI
+        for(short p = 0; p < MAX_ENEMIES; p++)
+        {
+            if(printAllEnemyProjectiles[p])
+            {
+                if(seconds < 1)
+                {
+                    printAllEnemyProjectiles[p] = false;
+                    pthread_mutex_lock(&semEnemyProjectilesAlive);
+                    enemyProjectilesAlive[p] = false;
+                    pthread_mutex_unlock(&semEnemyProjectilesAlive);
+                }
+                else
+                {
+                    if(AllProjectilesEnemies[p].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK -1))
+                    {
+                        printAllEnemyProjectiles[p] = false;
+                        pthread_mutex_lock(&semEnemyProjectilesAlive);
+                        enemyProjectilesAlive[p] = false;
+                        pthread_mutex_unlock(&semEnemyProjectilesAlive);
+                        // uccidere il proiettile
+                    }
+                    else
+                    {
+                        pthread_mutex_lock(&semCurses);
+                        printProjectile(AllProjectilesEnemies[p].x, AllProjectilesEnemies[p].y, false);
+                        pthread_mutex_unlock(&semCurses);
+                    }
+                }
+            }
+        }
 
 
         // STAMPA LA RANA
@@ -364,6 +415,7 @@ void *mainManager(void *args)
             }
             if(RIVER_DEBUG)
             {
+              
             }
             if(ENEMIES_DEBUG)
             {
@@ -440,8 +492,12 @@ void *enemiesHandler(void *args)
     Enemy allEn[MAX_ENEMIES];
     bool aliveEn[MAX_ENEMIES];
 
+    for(short k=0;k<MAX_ENEMIES;k++)
+    {
+        spawnEnemy(allEnemies[k].ID);
+    }
     usleep(FRAME_UPDATE); update++;
-
+    
     do{
 
         pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
@@ -621,3 +677,87 @@ void newEnemiesScene(short rowsY[], Enemy allEnemies[])
     }
 }
 
+void spawnEnemy(short enemyID)
+{
+    pthread_t enemy;
+    pthread_create(&enemy, NULL, singleEnemyHandler, (void *)&allEnemies[enemyID]);
+    pthread_mutex_lock(&semAllEnemies);
+    allEnemies[enemyID].PTID=enemy;
+    pthread_mutex_unlock(&semAllEnemies);
+}
+
+void *singleEnemyHandler(void *arg)
+{
+    Enemy myself= *((Enemy*)arg);
+
+    pthread_mutex_lock(&semDifficult);
+    GameRules rules = getRules(difficult);
+    pthread_mutex_unlock(&semDifficult);
+
+    randomSeed();
+
+    pthread_t proj; Projectile newBorn; 
+
+    do {
+        if(myself.genTime == 0)
+        {
+            if(myself.shot == 0)
+            {      
+                newBorn.x = myself.x+3; newBorn.y = myself.y+2;
+                newBorn.ID = myself.ID;
+
+                pthread_create(&proj, NULL, singleEnemyProjectileHandler, (void *)&newBorn.ID);
+
+                newBorn.PTID=proj;
+
+                pthread_mutex_lock(&semEmenyProjectiles);
+                enemyProjectiles[newBorn.ID].x = newBorn.x;
+                enemyProjectiles[newBorn.ID].y = newBorn.y;
+                enemyProjectiles[newBorn.ID].ID = newBorn.ID;
+                enemyProjectiles[newBorn.ID].PTID = proj;
+                pthread_mutex_unlock(&semEmenyProjectiles);
+
+                pthread_mutex_lock(&semEnemyProjectilesAlive);
+                enemyProjectilesAlive[newBorn.ID]=true;
+                pthread_mutex_unlock(&semEnemyProjectilesAlive);
+
+                myself.shot = randomNumber(30 * 4, 30 * 8);
+            }
+            else
+            {
+                myself.shot--;
+            }
+        }
+        else
+        {
+            myself.genTime--;
+        }
+
+        usleep(FRAME_UPDATE);
+    } while (true);
+}
+
+void *singleEnemyProjectileHandler(void *arg)
+{
+    short limit = ROWS_PER_MAP + ROWS_PER_BLOCK - 1; // 1 per il bordo inferiore
+    short updates = 0;
+    short id= *((short*)arg);
+
+    pthread_mutex_lock(&semDifficult);
+    GameRules rules = getRules(difficult);
+    pthread_mutex_unlock(&semDifficult);
+
+    do{
+        pthread_mutex_lock(&semEmenyProjectiles);
+        if(updates != 0 && updates % enemyProjectiles[id].speed == 0)
+        {
+            if(enemyProjectiles[id].y < limit)
+            {                
+                enemyProjectiles[id].y++;
+            }
+        }
+        pthread_mutex_unlock(&semEmenyProjectiles);
+        updates++;
+        usleep(FRAME_UPDATE);
+    } while (true);
+}

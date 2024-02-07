@@ -27,6 +27,9 @@ Enemy allEnemies[MAX_ENEMIES];                  pthread_mutex_t semAllEnemies;
 bool aliveEnemies[MAX_ENEMIES];                 pthread_mutex_t semAliveEnemies;
 short rowsY[RIVERSIDE_ROWS];                    //pthread_mutex_t semRowsY;
 
+Projectile enemyProjectiles[MAX_ENEMIES];       pthread_mutex_t semEmenyProjectiles;
+bool enemyProjectilesAlive[MAX_ENEMIES];        pthread_mutex_t semEnemyProjectilesAlive;
+
 bool setStartingVariables();
 bool game();
 
@@ -34,7 +37,7 @@ int main()
 {  
     setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
 
-    difficult = EASY;
+    difficult = MEDIUM;
 
     bool playAgain = game(); 
 
@@ -48,6 +51,7 @@ bool setStartingVariables()
     pthread_mutex_init(&semCurses, NULL);
     // ======================================================================================
 
+    GameRules rules = getRules(difficult);
 
     // PER GESTIRE LA RANA ==================================================================
     Frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
@@ -86,6 +90,15 @@ bool setStartingVariables()
     pthread_mutex_init(&semAllEnemies, NULL);
     pthread_mutex_init(&semAliveEnemies, NULL);
     //pthread_mutex_init(&semRowsY, NULL);
+    // ======================================================================================
+
+    // PROIETTILI NEMICI ====================================================================
+    for(short t = 0; t < MAX_ENEMIES; t++)
+    {
+        enemyProjectilesAlive[t] = false;
+        enemyProjectiles[t].x=-1; enemyProjectiles[t].y=-1;
+        enemyProjectiles[t].speed = rules.speed;
+    }
     // ======================================================================================
 }
 
