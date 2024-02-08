@@ -305,7 +305,7 @@ void *mainManager(void *args)
                                 pthread_mutex_unlock(&semAllEnemies);
 
                                 pthread_mutex_lock(&semAliveEnemies);
-                                aliveEnemies[e] = false; 
+                                aliveEnemies[e] = false;
                                 pthread_mutex_unlock(&semAliveEnemies);
 
                                 printEnemies[e] = false;
@@ -373,8 +373,8 @@ void *mainManager(void *args)
                         printAllEnemyProjectiles[p] = false;
                         pthread_mutex_lock(&semEnemyProjectilesAlive);
                         enemyProjectilesAlive[p] = false;
+                        easyKill(enemyProjectiles[p].PTID);
                         pthread_mutex_unlock(&semEnemyProjectilesAlive);
-                        // 
                     }
                     else
                     {
@@ -435,6 +435,16 @@ void *mainManager(void *args)
             }
             if(ENEMIES_PROJECTILES_DEBUG)
             {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    if(printAllEnemyProjectiles[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemyProjectiles[s].x,enemyProjectiles[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                DebugLine += 2 + MAX_ENEMIES + 1;
+                pthread_mutex_unlock(&semCurses);
 
             }
             if(COLLISION_DEBUG)
@@ -459,6 +469,27 @@ void *mainManager(void *args)
             frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1;    // x iniziale (centro mappa)
             frogger.y = ROWS_PER_MAP - 1;                                   // y iniziale (ultima riga)
             pthread_mutex_lock(&semFrogger); Frogger = frogger; pthread_mutex_unlock(&semFrogger);
+
+            for(short p = 0; p < MAX_ENEMIES; p++)
+            {
+                pthread_mutex_lock(&semAliveEnemies);
+                aliveEnemies[p]=false;
+                pthread_mutex_unlock(&semAliveEnemies);
+
+                pthread_mutex_lock(&semAllEnemies);
+                easyKill(allEnemies[p].PTID);
+                pthread_mutex_unlock(&semAllEnemies);
+                
+                pthread_mutex_lock(&semEmenyProjectiles);
+                if(enemyProjectilesAlive[p]==true)
+                    easyKill(enemyProjectiles[p].PTID);
+                pthread_mutex_unlock(&semEmenyProjectiles);
+
+                pthread_mutex_lock(&semEnemyProjectilesAlive);
+                enemyProjectilesAlive[p]=false;
+                pthread_mutex_unlock(&semEnemyProjectilesAlive);               
+            }
+
         }
 
         // UPDATE SCHERMO E TEMPO
@@ -497,7 +528,9 @@ void *enemiesHandler(void *args)
 
     for(short k=0;k<MAX_ENEMIES;k++)
     {
+        //pthread_mutex_lock(&semAllEnemies);
         spawnEnemy(allEnemies[k].ID);
+        //pthread_mutex_unlock(&semAllEnemies);
     }
     usleep(FRAME_UPDATE); update++;
     
@@ -523,7 +556,7 @@ void *enemiesHandler(void *args)
                         allEn[en].shot = randomNumber(30, 100);
                         allEn[en].ID = en;
                         allEn[en].genTime = randomNumber(15, 90); // da mezzo a tre secondi
-
+                        
                         for(short e = 0; e < MAX_ENEMIES; e++)
                         {
                             if(e != en)
@@ -535,12 +568,15 @@ void *enemiesHandler(void *args)
                     } while (collided);
 
                     pthread_mutex_lock(&semAliveEnemies); 
-                    allEnemies[en] = allEn[en]; 
-                    pthread_mutex_unlock(&semAliveEnemies); 
-
+                    aliveEnemies[en] = true;                    
+                    pthread_mutex_unlock(&semAliveEnemies);  
+                    
                     pthread_mutex_lock(&semAllEnemies);
-                    aliveEnemies[en] = true;
+                    allEnemies[en] = allEn[en];                    
                     pthread_mutex_unlock(&semAllEnemies);
+
+                    spawnEnemy(allEnemies[en].ID);
+
                     break;
                 }
             }
@@ -606,7 +642,7 @@ void *singleEnemyProjectileHandler(void *arg)
     short limit = ROWS_PER_MAP + ROWS_PER_BLOCK - 1; // 1 per il bordo inferiore
     short updates = 0;
     short id = *((short*)arg);
-
+    bool continua=true;
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
     pthread_mutex_unlock(&semDifficult);
@@ -619,11 +655,17 @@ void *singleEnemyProjectileHandler(void *arg)
             {                
                 enemyProjectiles[id].y++;
             }
+            else
+            {
+                continua=false;
+            }
         }
         pthread_mutex_unlock(&semEmenyProjectiles);
+        
         updates++;
         usleep(FRAME_UPDATE);
-    } while (true);
+    } while (continua);
+    pthread_exit(NULL);
 }
 
 
@@ -758,8 +800,8 @@ void newEnemiesScene(short rowsY[], Enemy allEnemies[])
 void spawnEnemy(short enemyID)
 {
     pthread_t enemy;
-    pthread_create(&enemy, NULL, singleEnemyHandler, (void *)&allEnemies[enemyID]);
     pthread_mutex_lock(&semAllEnemies);
+    pthread_create(&enemy, NULL, singleEnemyHandler, (void *)&allEnemies[enemyID]);    
     allEnemies[enemyID].PTID=enemy;
     pthread_mutex_unlock(&semAllEnemies);
 }

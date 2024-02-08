@@ -37,7 +37,7 @@ int main()
 {  
     setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
 
-    difficult = MEDIUM;
+    difficult = HARD;
 
     bool playAgain = game(); 
 
