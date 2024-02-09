@@ -25,7 +25,7 @@ extern bool genFrogProj;                            extern pthread_mutex_t semGe
 
 extern Enemy allEnemies[MAX_ENEMIES];               extern pthread_mutex_t semAllEnemies;
 extern bool aliveEnemies[MAX_ENEMIES];              extern pthread_mutex_t semAliveEnemies;
-extern short rowsY[RIVERSIDE_ROWS];                 //extern pthread_mutex_t semRowsY;
+extern short rowsY[RIVERSIDE_ROWS];                 
 
 extern Projectile enemyProjectiles[MAX_ENEMIES];    extern pthread_mutex_t semEmenyProjectiles;
 extern bool enemyProjectilesAlive[MAX_ENEMIES];     extern pthread_mutex_t semEnemyProjectilesAlive;
@@ -34,89 +34,89 @@ extern bool enemyProjectilesAlive[MAX_ENEMIES];     extern pthread_mutex_t semEn
 *  FUNZIONI THREAD  *
 \********************/
 
-void *frogHandler(void *arg)
+void *frogHandler(void *arg) // semCurses, semFrogger, semGenFrogProj
 {
     int ch;
     do {
-        pthread_mutex_lock(&semCurses); 
-        if((ch = getch()) != ERR && ch != KEY_MOUSE) // se c'e' stato un input non proveniente dal mouse
+        pthread_mutex_lock(&semCurses); ch = getch(); pthread_mutex_unlock(&semCurses);
+        if(ch != ERR && ch != KEY_MOUSE) // se c'e' stato un input non proveniente dal mouse
         {
-            pthread_mutex_lock(&semFrogger); 
             switch(ch) //qui dentro modifichiamo x e y
             {
                 case 'd':
                 case 'D':
                 case KEY_RIGHT:
+                    pthread_mutex_lock(&semFrogger); 
                     Frogger.x += COLUMNS_PER_BLOCK;
                     if (Frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
                     {
                         Frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
                     }
+                    pthread_mutex_unlock(&semFrogger);
                     break;
 
                 case 'a':
                 case 'A':
                 case KEY_LEFT:
+                    pthread_mutex_lock(&semFrogger); 
                     Frogger.x -= COLUMNS_PER_BLOCK;
                     if (Frogger.x < 1)
                     {
                         Frogger.x = 1;
                     }
+                    pthread_mutex_unlock(&semFrogger);
                     break;
 
                 case 'w':
                 case 'W':
                 case KEY_UP:
+                    pthread_mutex_lock(&semFrogger); 
                     Frogger.y -= ROWS_PER_BLOCK;
                     if(Frogger.y < SCOREBOARD_ROWS)
                     {
                         Frogger.y = SCOREBOARD_ROWS;
                     }
+                    pthread_mutex_unlock(&semFrogger);
                     break;
 
                 case 's':
                 case 'S':
                 case KEY_DOWN:
+                    pthread_mutex_lock(&semFrogger); 
                     Frogger.y += ROWS_PER_BLOCK;
                     if (Frogger.y > (ROWS_PER_MAP - 3))
                     {
                         Frogger.y = ROWS_PER_MAP - 1;
                     }
+                    pthread_mutex_unlock(&semFrogger);
                     break;
 
                 case ' ': // generazione di un proietile
                     pthread_mutex_lock(&semGenFrogProj); genFrogProj = true; pthread_mutex_unlock(&semGenFrogProj);
                     break;
             }
-            pthread_mutex_unlock(&semFrogger); 
         } 
-        pthread_mutex_unlock(&semCurses); 
         usleep(FRAME_UPDATE); 
     } while (true);
 }
 
-void *frogProjectilesHandler(void *arg)
+void *frogProjectilesHandler(void *arg) // semGenFrogProj, semDoProjectileExist, semFrogProjectiles
 {
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
     pthread_mutex_unlock(&semDifficult);
     
-    short updatesCounter = 0; 
+    short updatesCounter = 0; Frog actual;
 
     bool proiettiliEsistenti[MAX_FROG_PROJ];
 
-    for(short i = 0; i < MAX_FROG_PROJ; i++)
-    {
-        proiettiliEsistenti[i] = false;
-    }
-
-    Frog actual;
+    setToFalse(proiettiliEsistenti, MAX_FROG_PROJ);
 
     do{
         bool generate = false;
         pthread_mutex_lock(&semGenFrogProj); generate = genFrogProj; pthread_mutex_unlock(&semGenFrogProj);
 
-        pthread_mutex_lock(&semDoProjectileExist);
+        pthread_mutex_lock(&semDoProjectileExist);  // scarichiamo in locale
         for(short i = 0; i < MAX_FROG_PROJ; i++)
         {
             proiettiliEsistenti[i] = doProjectileExist[i];
@@ -127,11 +127,16 @@ void *frogProjectilesHandler(void *arg)
         if(generate)
         {
             pthread_mutex_lock(&semFrogger); actual = Frogger; pthread_mutex_unlock(&semFrogger);
+
             for(short i = 0; i < MAX_FROG_PROJ; i++)
             {
                 if(proiettiliEsistenti[i] == false)
                 {
                     proiettiliEsistenti[i] = true;
+
+                    pthread_mutex_lock(&semDoProjectileExist);
+                    doProjectileExist[i] = true;
+                    pthread_mutex_unlock(&semDoProjectileExist);
 
                     pthread_mutex_lock(&semFrogProjectiles);
                     frogProjectiles[i].PTID = 0;             // perche' e' la rana (i proiettili nemici useranno 1-2-3)
@@ -140,17 +145,12 @@ void *frogProjectilesHandler(void *arg)
                     frogProjectiles[i].y = actual.y - 1;
                     frogProjectiles[i].speed = rules.speed;
                     pthread_mutex_unlock(&semFrogProjectiles);
+
                     pthread_mutex_lock(&semGenFrogProj); genFrogProj = false; pthread_mutex_unlock(&semGenFrogProj);
+
                     break;
                 }
             }
-
-            pthread_mutex_lock(&semDoProjectileExist);
-            for(short i = 0; i < MAX_FROG_PROJ; i++)
-            {
-                doProjectileExist[i] = proiettiliEsistenti[i];
-            }
-            pthread_mutex_unlock(&semDoProjectileExist);
         }
 
         // FA AVANZARE I PROIETTILI IN BASE ALLA LORO VELOCITA' E COMUNICA LE NUOVE COORDINATE
@@ -165,14 +165,18 @@ void *frogProjectilesHandler(void *arg)
                     if(frogProjectiles[i].y < 3)
                     {
                         proiettiliEsistenti[i] = false; // smette di esistere
-                        pthread_mutex_lock(&semDoProjectileExist);
-                        doProjectileExist[i] = false;
-                        pthread_mutex_unlock(&semDoProjectileExist);
                     }                    
                 }
             }
         }
         pthread_mutex_unlock(&semFrogProjectiles);
+
+        pthread_mutex_lock(&semDoProjectileExist);  // scarichiamo in locale
+        for(short i = 0; i < MAX_FROG_PROJ; i++)
+        {
+            doProjectileExist[i] = proiettiliEsistenti[i];
+        }
+        pthread_mutex_unlock(&semDoProjectileExist);
 
         usleep(FRAME_UPDATE);
 
@@ -183,9 +187,10 @@ void *mainManager(void *args)
 {
     // GESTIONE DELLA PARTITA CORRENTE
     currentGame.lives = LIVES; currentGame.score = 0;
+
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
-    pthread_mutex_unlock(&semDifficult);
+    pthread_mutex_unlock(&semDifficult);   
 
     Frog frogger;
     Projectile proiettiliRana[MAX_FROG_PROJ];
@@ -255,13 +260,19 @@ void *mainManager(void *args)
         }  
     
         // LEGGE I NEMICI
-        pthread_mutex_lock(&semAliveEnemies); pthread_mutex_lock(&semAllEnemies);
+        pthread_mutex_lock(&semAliveEnemies); 
         for(short i = 0; i < MAX_ENEMIES; i++)
         {
             printEnemies[i] = aliveEnemies[i];
+        }
+        pthread_mutex_unlock(&semAliveEnemies); 
+
+        pthread_mutex_lock(&semAllEnemies);
+        for(short i = 0; i < MAX_ENEMIES; i++)
+        {
             AllEnemies[i] = allEnemies[i];
         }
-        pthread_mutex_unlock(&semAliveEnemies); pthread_mutex_unlock(&semAllEnemies);
+        pthread_mutex_unlock(&semAllEnemies);
 
         // SALVA I PROIETTILI ESISTENTI (RANA)
         pthread_mutex_lock(&semDoProjectileExist);
@@ -306,7 +317,7 @@ void *mainManager(void *args)
                     // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
                     for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
                     {
-                        if(allEnemies[e].genTime == 0 && printEnemies[e])
+                        if(AllEnemies[e].genTime == 0 && printEnemies[e])
                         {
                             frogPrjsEnemiesCollided = enemyFrogProjCD(AllEnemies[e].x, AllEnemies[e].y, proiettiliRana[fr].x, proiettiliRana[fr].y);
                             if(frogPrjsEnemiesCollided)
@@ -379,9 +390,9 @@ void *mainManager(void *args)
         {
             for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
             {
-                if(allEnemies[e].genTime == 0) 
+                if(AllEnemies[e].genTime == 0) 
                 {
-                    frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
+                    frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, AllEnemies[e].x, AllEnemies[e].y);
                 }
             }
             if(frogEnemyCollided && !GODMODE)
@@ -413,17 +424,15 @@ void *mainManager(void *args)
         {
             if(printEnemies[e])
             {
-                pthread_mutex_lock(&semCurses);
-                printEnemy(AllEnemies[e].x, AllEnemies[e].y, AllEnemies[e].genTime);
+                pthread_mutex_lock(&semCurses); printEnemy(AllEnemies[e].x, AllEnemies[e].y, AllEnemies[e].genTime); pthread_mutex_unlock(&semCurses);
                 if(AllEnemies[e].genTime > 0)
                 {
                     AllEnemies[e].genTime--;
+                    
                     pthread_mutex_lock(&semAllEnemies);
                     allEnemies[e].genTime--;
                     pthread_mutex_unlock(&semAllEnemies);
-                }
-                pthread_mutex_unlock(&semCurses);
-                
+                }                
             }
         }
         
@@ -499,7 +508,10 @@ void *mainManager(void *args)
                 mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
                 for(short s = 0; s < MAX_ENEMIES; s++)
                     if(printEnemies[s])
+                    {
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", AllEnemies[s].x, AllEnemies[s].y);
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS+11, "%03d", AllEnemies[s].shot);
+                    }
                     else
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
                 DebugLine += 2 + (MAX_ENEMIES) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
@@ -523,13 +535,34 @@ void *mainManager(void *args)
                 
             }
         }  
-        
+
+        pthread_mutex_lock(&semAllEnemies);
+        for(short e = 0; e < MAX_ENEMIES; e++)
+        {
+            if(allEnemies[e].genTime == 0)
+            {
+                if(allEnemies[e].shot < -1)
+                {
+                    allEnemies[e].shot = randomNumber(30 * 4, 30 * 8);
+                }
+                else
+                {
+                    allEnemies[e].shot--;
+                }
+            }
+            else
+            {
+                allEnemies[e].genTime--;
+            }
+        }
+        pthread_mutex_unlock(&semAllEnemies);
+
         // GENERA NUOVI NEMICI DOPO LA LORO MORTE
         if(fps%10==0 &&fps>0)
         {
-            for(int e=0; e<MAX_ENEMIES;e++)
+            for(short e = 0; e < MAX_ENEMIES; e++)
             {
-                if(aliveEnemies[e]==false)
+                if(aliveEnemies[e] == false)
                 {
                     pthread_mutex_lock(&semAliveEnemies);
                     aliveEnemies[e]=true;
@@ -538,6 +571,7 @@ void *mainManager(void *args)
                     pthread_mutex_lock(&semAllEnemies);
                     bool collided = false; 
                     do{
+                        collided = false;
                         allEnemies[e].x = randomNumber(1, COLUMNS_PER_MAP-ENEMY_COLUMNS-1);
                         allEnemies[e].y = rowsY[rand() % RIVERSIDE_ROWS];
                         allEnemies[e].shot = randomNumber(30, 100);
@@ -547,9 +581,13 @@ void *mainManager(void *args)
                         for(short o = 0; o < MAX_ENEMIES; o++)
                         {
                             if(o != e)
+                            {
                                 collided = enemyEnemyCD(allEnemies[e].x, allEnemies[e].y, allEnemies[o].x, allEnemies[o].y);
+                            }
                             if(collided)
-                                break;
+                            {
+                                o = 30000;
+                            }    
                         }
                     
                     } while (collided);
@@ -578,8 +616,9 @@ void *mainManager(void *args)
             for(short p = 0; p < MAX_ENEMIES; p++)
             {
                 pthread_mutex_lock(&semAllEnemies);
-                newEnemiesScene(rowsY, allEnemies);
-                pthread_mutex_unlock(&semAllEnemies);                
+                newEnemiesScene(rowsY, allEnemies);   
+                pthread_mutex_unlock(&semAllEnemies); 
+
                 pthread_mutex_lock(&semEmenyProjectiles);
                 if(enemyProjectilesAlive[p]==true)
                     easyKill(enemyProjectiles[p].PTID);
@@ -605,6 +644,7 @@ void *mainManager(void *args)
 
 void *singleEnemyHandler(void *arg)
 {
+    bool nowGenerated = false;
     short enemyID= *((short*)arg);
 
     pthread_mutex_lock(&semDifficult);
@@ -615,13 +655,19 @@ void *singleEnemyHandler(void *arg)
 
     pthread_t proj; Projectile newBorn; 
 
+    Enemy myself;
+
     do {
-        if(allEnemies[enemyID].genTime == 0)
+        pthread_mutex_lock(&semAllEnemies);         // scarica in locale
+        myself = allEnemies[enemyID];
+        pthread_mutex_unlock(&semAllEnemies);
+
+        if(myself.genTime == 0)
         {
-            if(allEnemies[enemyID].shot == 0)
+            if(myself.shot == 0 && nowGenerated == false)
             {      
-                newBorn.x = allEnemies[enemyID].x+3; newBorn.y = allEnemies[enemyID].y+2;
-                newBorn.ID = allEnemies[enemyID].ID;
+                newBorn.x = myself.x+3; newBorn.y = myself.y+2;
+                newBorn.ID = myself.ID;
 
                 pthread_create(&proj, NULL, singleEnemyProjectileHandler, (void *)&newBorn.ID);
 
@@ -637,19 +683,13 @@ void *singleEnemyHandler(void *arg)
                 pthread_mutex_lock(&semEnemyProjectilesAlive);
                 enemyProjectilesAlive[newBorn.ID]=true;
                 pthread_mutex_unlock(&semEnemyProjectilesAlive);
-
-                allEnemies[enemyID].shot = randomNumber(30 * 4, 30 * 8);
+                nowGenerated = true;
             }
             else
             {
-                allEnemies[enemyID].shot--;
+                nowGenerated = false;
             }
         }
-        else
-        {
-            allEnemies[enemyID].genTime--;
-        }
-
         usleep(FRAME_UPDATE);
     } while (true);
 }
@@ -659,7 +699,8 @@ void *singleEnemyProjectileHandler(void *arg)
     short limit = ROWS_PER_MAP + ROWS_PER_BLOCK - 1; // 1 per il bordo inferiore
     short updates = 0;
     short id = *((short*)arg);
-    bool continua=true;
+    bool continua = true;
+
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
     pthread_mutex_unlock(&semDifficult);
@@ -821,4 +862,12 @@ void spawnEnemy(short enemyID)
     pthread_create(&enemy, NULL, singleEnemyHandler, (void *)&allEnemies[enemyID].ID);    
     allEnemies[enemyID].PTID=enemy;
     pthread_mutex_unlock(&semAllEnemies);
+}
+
+void logChat(char *msg)
+{
+    FILE *fp = fopen("debug.txt", "a");
+    fprintf(fp, "%s", msg);
+    fprintf(fp, "\n");
+    fclose(fp);
 }

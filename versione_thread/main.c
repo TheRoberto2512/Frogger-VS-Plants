@@ -25,7 +25,7 @@ bool genFrogProj;                               pthread_mutex_t semGenFrogProj;
 
 Enemy allEnemies[MAX_ENEMIES];                  pthread_mutex_t semAllEnemies;
 bool aliveEnemies[MAX_ENEMIES];                 pthread_mutex_t semAliveEnemies;
-short rowsY[RIVERSIDE_ROWS];                    //pthread_mutex_t semRowsY;
+short rowsY[RIVERSIDE_ROWS];                    
 
 Projectile enemyProjectiles[MAX_ENEMIES];       pthread_mutex_t semEmenyProjectiles;
 bool enemyProjectilesAlive[MAX_ENEMIES];        pthread_mutex_t semEnemyProjectilesAlive;
@@ -36,6 +36,9 @@ bool game();
 int main()
 {  
     setlocale(LC_ALL, ""); // attiva i caratteri speciali dell'UNICODE
+
+    FILE *fp = fopen("debug.txt", "w"); // cancella il file di debug!
+    fclose(fp);    
 
     difficult = HARD;
 

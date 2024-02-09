@@ -120,3 +120,6 @@ void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
 
 // Funzione per creare il thread nemico.
 void spawnEnemy(short enemyID);
+
+// Funzione per stampare dei messaggi su un file di testo.
+void logChat(char *msg);

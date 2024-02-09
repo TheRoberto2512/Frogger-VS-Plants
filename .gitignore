@@ -12,3 +12,6 @@ game
 
 SCORE.txt
 # per non salvare lo score
+
+debug.txt
+# per non salvare il file di debug
