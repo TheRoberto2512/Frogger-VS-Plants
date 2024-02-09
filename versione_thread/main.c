@@ -119,7 +119,6 @@ bool game()
     // CREAZIONE THREADS
     pthread_create(&tFrog, NULL, frogHandler, NULL);
     pthread_create(&tFrogProjectilesHandler, NULL, frogProjectilesHandler, NULL);
-    pthread_create(&tEnemiesHandler, NULL, enemiesHandler, NULL);
 
     mainManager();
 
