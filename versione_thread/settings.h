@@ -7,7 +7,7 @@ typedef struct gameRules
 {
     short time;
     bool enemies;
-    float BadCrocodile;
+    short BadCrocodile;
     short speed;
 } GameRules;
 #endif

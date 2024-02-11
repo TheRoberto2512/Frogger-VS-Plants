@@ -63,7 +63,7 @@ void *frogProjectilesHandler();
 void *mainManager();
 
 // Thread che gestisce lo spawn dei coccodrilli.
-
+void *riverHandler(void *args);
 
 // Thread che gestisce un singolo coccodrillo.
 void *singleCrocodileHandler(void *arg1);
@@ -98,16 +98,25 @@ short reverseComputeY(short n);
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash);
 
 // Funzione per creare il thread coccodrillo.
+short spawnCrocodile(short lane, short x,short y );
 
+// Funzione per regolare la velocita' delle righe del fiume.
+void riverSpeeds();
 
-// Funzione per regolare la decisione delle velocita' del fiume.
-void riverSpeeds(short speeds[], short rulesSpeed);
+// Funzione per regolare la direzione delle righe del fiume.
+void riversDirections();
+
+// Funzione per impostare la velocità coccodrili pari alla loro corsia.
+void setCrocSpeeds();
+
+// Funzione per resettare le cordinate dei coccodrilli
+void resetCrocCord();
 
 // Funzione per generare randomicamente lo spazio tra due coccodrilli.
 short crocodileSpace();
 
 // Funzione per generare una nuova scena (posizioni coccodrilli) all'inizio di una manche.
-void newCrocodileScene(int crocToMain[], short directions[], short speeds[], short spawnTimers[], GameRules *rules);
+void newCrocodileScene(RiverRow rivRow[],short spawnTimers[]);
 
 // Funzione per ottenere il numero della riga in base alla coordinata y dell'entita'.
 short yToRowNumber(short y);

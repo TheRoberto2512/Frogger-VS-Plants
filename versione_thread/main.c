@@ -107,25 +107,18 @@ bool setStartingVariables()
     // ======================================================================================
 
     // COCCODRILLI ==========================================================================
-    short ra = 1; //rand() % 2;
+    short ra = rand() % 2;
     for(short r = 0; r < RIVER_ROWS; r++)
     {
         river[r].direction = ra;
         ra = !ra;
         for(short rr = 0; rr < MAX_CROCODILE_PER_ROW; rr++)
         {
-            if(r == 0 && rr == 0)
-            {
-                river[r].crocs[rr].x = 1;
-                river[r].crocs[rr].y = 16;
-            }
-            else
-            {
-                river[r].crocs[rr].x = STOPPED_CROCODILE;
-                river[r].crocs[rr].y = STOPPED_CROCODILE;
-            }
+            river[r].crocs[rr].x = STOPPED_CROCODILE;
+            river[r].crocs[rr].y = STOPPED_CROCODILE;  
             river[r].crocs[rr].direction = river[r].direction;
             river[r].crocs[rr].speed = 2;
+            river[r].speed=2;
             river[r].crocs[rr].splash = -10;
         }
         pthread_mutex_init(&riverMutex[r], NULL);
@@ -142,7 +135,7 @@ bool game()
     keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
     mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-    pthread_t tFrog, tFrogProjectilesHandler, crocOne;
+    pthread_t tFrog, tFrogProjectilesHandler, crocOne,tRiverHandler;
     bool playAgain = false; bool continua = true;
 
     setStartingVariables();
@@ -161,12 +154,16 @@ bool game()
             coordsCount++;
         }
     }
-    
+    pthread_create(&tRiverHandler, NULL, riverHandler, NULL);
 
     mainManager();
 
     pthread_cancel(tFrog);
     pthread_join(tFrog, NULL);
+    pthread_cancel(tFrogProjectilesHandler);
+    pthread_join(tFrogProjectilesHandler, NULL);
+    pthread_cancel(tRiverHandler);
+    pthread_join(tRiverHandler, NULL);
 
     // FINE PARTITA
     pthread_mutex_destroy(&semFrogger);
