@@ -42,7 +42,7 @@ int main()
     FILE *fp = fopen("debug.txt", "w"); // cancella il file di debug!
     fclose(fp);    
 
-    difficult = HARD;
+    difficult = MEDIUM;
 
     bool playAgain = game(); 
 

@@ -693,8 +693,32 @@ void *mainManager(void *args)
 
 void *riverHandler(void *args)
 {
+    short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
     bool keepGenerating = true;
     newCrocodileScene(river,spawnTimers);
+    
+    do
+    {
+        for(short i=0; i<RIVER_ROWS;i++)
+        {
+            if(spawnTimers[i]==0)
+            {
+                spawnCrocodile(i,spawns[river[i].direction],computeY(i));
+
+                if(river[i].direction) // se va a destra
+                    spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * river[i].speed;
+                else
+                    spawnTimers[i] = (crocodileSpace() + CROCODILE_COLUMNS) * river[i].speed; 
+            }
+            else
+            {
+                spawnTimers[i]--;
+            }
+        }
+
+        usleep(FRAME_UPDATE);
+    } while (true);
+    
 }
 
 void *singleEnemyHandler(void *arg)
