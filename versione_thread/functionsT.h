@@ -66,7 +66,7 @@ void *mainManager();
 
 
 // Thread che gestisce un singolo coccodrillo.
-
+void *singleCrocodileHandler(void *arg1);
 
 // Thread che gestisce un singolo nemico.
 void *singleEnemyHandler(void *arg);

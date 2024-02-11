@@ -30,6 +30,8 @@ short rowsY[RIVERSIDE_ROWS];
 Projectile enemyProjectiles[MAX_ENEMIES];       pthread_mutex_t semEmenyProjectiles;
 bool enemyProjectilesAlive[MAX_ENEMIES];        pthread_mutex_t semEnemyProjectilesAlive;
 
+RiverRow river[RIVER_ROWS];                     pthread_mutex_t riverMutex[RIVER_ROWS];
+
 bool setStartingVariables();
 bool game();
 
@@ -103,6 +105,32 @@ bool setStartingVariables()
         enemyProjectiles[t].speed = rules.speed;
     }
     // ======================================================================================
+
+    // COCCODRILLI ==========================================================================
+    short ra = 1; //rand() % 2;
+    for(short r = 0; r < RIVER_ROWS; r++)
+    {
+        river[r].direction = ra;
+        ra = !ra;
+        for(short rr = 0; rr < MAX_CROCODILE_PER_ROW; rr++)
+        {
+            if(r == 0 && rr == 0)
+            {
+                river[r].crocs[rr].x = 1;
+                river[r].crocs[rr].y = 16;
+            }
+            else
+            {
+                river[r].crocs[rr].x = STOPPED_CROCODILE;
+                river[r].crocs[rr].y = STOPPED_CROCODILE;
+            }
+            river[r].crocs[rr].direction = river[r].direction;
+            river[r].crocs[rr].speed = 2;
+            river[r].crocs[rr].splash = -10;
+        }
+        pthread_mutex_init(&riverMutex[r], NULL);
+    }
+    // ======================================================================================
 }
 
 bool game()
@@ -114,7 +142,7 @@ bool game()
     keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
     mousemask(ALL_MOUSE_EVENTS, NULL); // attiva gli eventi del mouse   
 
-    pthread_t tFrog, tFrogProjectilesHandler, tEnemiesHandler;
+    pthread_t tFrog, tFrogProjectilesHandler, crocOne;
     bool playAgain = false; bool continua = true;
 
     setStartingVariables();
@@ -122,6 +150,18 @@ bool game()
     // CREAZIONE THREADS
     pthread_create(&tFrog, NULL, frogHandler, NULL);
     pthread_create(&tFrogProjectilesHandler, NULL, frogProjectilesHandler, NULL);
+
+    CrocPos crocCoords[RIVER_ROWS * MAX_CROCODILE_PER_ROW]; short coordsCount = 0;
+    for(short r = 0; r < RIVER_ROWS; r++)
+    {
+        for(short rr = 0; rr < MAX_CROCODILE_PER_ROW; rr++)
+        {
+            crocCoords[coordsCount].row = r; crocCoords[coordsCount].ID = rr;
+            pthread_create(&crocOne, NULL, singleCrocodileHandler, (void *)&crocCoords[coordsCount]);
+            coordsCount++;
+        }
+    }
+    
 
     mainManager();
 

@@ -46,3 +46,24 @@ typedef struct projectile
     short speed;        // velocita' del proiettile
 } Projectile;
 #endif
+
+#ifndef RIVER_GUARD
+#define RIVER_GUARD
+#define MAX_CROCODILE_PER_ROW 3
+#define STOPPED_CROCODILE -100
+typedef struct riverRow
+{
+    short direction;
+    short speed;
+    Crocodile crocs[MAX_CROCODILE_PER_ROW];
+} RiverRow;
+#endif
+
+#ifndef CROC_POS
+#define CROC_POS
+typedef struct crocPos
+{
+    short row;
+    short ID;
+} CrocPos;
+#endif

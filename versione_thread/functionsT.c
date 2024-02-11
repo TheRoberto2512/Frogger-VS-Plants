@@ -30,6 +30,8 @@ extern short rowsY[RIVERSIDE_ROWS];
 extern Projectile enemyProjectiles[MAX_ENEMIES];    extern pthread_mutex_t semEmenyProjectiles;
 extern bool enemyProjectilesAlive[MAX_ENEMIES];     extern pthread_mutex_t semEnemyProjectilesAlive;
 
+extern RiverRow river[RIVER_ROWS];                  extern pthread_mutex_t riverMutex[RIVER_ROWS];
+
 /********************\
 *  FUNZIONI THREAD  *
 \********************/
@@ -185,6 +187,7 @@ void *frogProjectilesHandler(void *arg) // semGenFrogProj, semDoProjectileExist,
 
 void *mainManager(void *args)
 {
+    bool n = true;
     // GESTIONE DELLA PARTITA CORRENTE
     currentGame.lives = LIVES; currentGame.score = 0;
 
@@ -204,6 +207,8 @@ void *mainManager(void *args)
     bool printAllEnemyProjectiles[MAX_ENEMIES];   
     Projectile AllProjectilesEnemies[MAX_ENEMIES];
     
+    RiverRow backupRiver[RIVER_ROWS];
+
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
 
@@ -304,6 +309,14 @@ void *mainManager(void *args)
         }
         pthread_mutex_unlock(&semEnemyProjectilesAlive);
 
+        // SALVA TUTTI I COCCODRILLI
+        for(short c = 0; c < RIVER_ROWS; c++)
+        {
+            pthread_mutex_lock(&riverMutex[c]);
+            backupRiver[c] = river[c];
+            pthread_mutex_unlock(&riverMutex[c]);
+        }
+
         // COLLISIONI
         bool frogPrjsEnemiesCollided = false;
         for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
@@ -400,6 +413,7 @@ void *mainManager(void *args)
                 currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
+        
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
         {
@@ -436,6 +450,21 @@ void *mainManager(void *args)
             }
         }
         
+        // STAMPA TUTTI I COCCODRILLI
+        for(short cc = 0; cc < RIVER_ROWS; cc++)
+        {
+            for(short ccc = 0; ccc < MAX_CROCODILE_PER_ROW; ccc++)
+            {
+                if(backupRiver[cc].crocs[ccc].x != -100 && backupRiver[cc].crocs[ccc].y != -100)
+                {
+                    if(backupRiver[cc].crocs[ccc].splash == -10)
+                        printCrocodile(backupRiver[cc].crocs[ccc].x, backupRiver[cc].crocs[ccc].y, backupRiver[cc].direction);
+                    else
+                        printBadCrocodile(backupRiver[cc].crocs[ccc].x, backupRiver[cc].crocs[ccc].y, backupRiver[cc].direction);
+                }
+            }
+        }
+
         // STAMPA TUTTI I PROIETTILI NEMICI
         for(short p = 0; p < MAX_ENEMIES; p++)
         {
@@ -536,6 +565,7 @@ void *mainManager(void *args)
             }
         }  
 
+        // AGGIORNA LO STATO DEI NEMICI
         pthread_mutex_lock(&semAllEnemies);
         for(short e = 0; e < MAX_ENEMIES; e++)
         {
@@ -633,12 +663,26 @@ void *mainManager(void *args)
 
         // UPDATE SCHERMO E TEMPO
         pthread_mutex_lock(&semCurses); refresh(); pthread_mutex_unlock(&semCurses);        
-        fps++;               // aggiorna e incrementa fps        
+        fps++;                          // aggiorna e incrementa fps        
         if(fps != 0 && fps % 30 == 0)   // ogni 30 update passa un secondo
             seconds++;
 
         usleep(FRAME_UPDATE);           // riposa
     
+        if(seconds == 2 && n)
+        {
+            n = false;
+            pthread_mutex_lock(&riverMutex[2]);
+            river[2].crocs[0].x = 1;
+            river[2].crocs[0].y = 16;
+            pthread_mutex_unlock(&riverMutex[2]);
+            pthread_mutex_lock(&riverMutex[1]);
+            river[1].crocs[0].x = 100;
+            river[1].crocs[0].y = 20;
+            river[1].crocs[0].splash = 60;
+            pthread_mutex_unlock(&riverMutex[1]);
+        }
+
     } while(keepPlaying);
 }
 
@@ -724,6 +768,71 @@ void *singleEnemyProjectileHandler(void *arg)
         usleep(FRAME_UPDATE);
     } while (continua);
     pthread_exit(NULL);
+}
+
+void *singleCrocodileHandler(void *arg1)
+{
+    CrocPos input = *((CrocPos *) arg1);
+    
+    short myRow = input.row;
+    short myID = input.ID;
+    short update = 1;
+
+    Crocodile myself;
+
+    pthread_mutex_lock(&riverMutex[myRow]);
+    myself = river[myRow].crocs[myID];
+    river[myRow].crocs[myID].PTID = pthread_self();
+    pthread_mutex_unlock(&riverMutex[myRow]);
+
+    do{
+        if(update % myself.speed == 0)
+        {
+            // scarica aggiornamenti
+            pthread_mutex_lock(&riverMutex[myRow]);
+            myself = river[myRow].crocs[myID];
+            pthread_mutex_unlock(&riverMutex[myRow]);
+
+            if(myself.x != STOPPED_CROCODILE && myself.y != STOPPED_CROCODILE) // se esisto ancora
+            {
+                if(myself.direction) // se deve andare a destra
+                {
+                    pthread_mutex_lock(&riverMutex[myRow]);
+                    river[myRow].crocs[myID].x++;
+                    if(river[myRow].crocs[myID].x >= COLUMNS_PER_MAP + 1)
+                    {
+                        river[myRow].crocs[myID].x = STOPPED_CROCODILE;
+                        river[myRow].crocs[myID].y = STOPPED_CROCODILE;
+                    }
+                    pthread_mutex_unlock(&riverMutex[myRow]);
+                }
+                else
+                {
+                    pthread_mutex_lock(&riverMutex[myRow]);
+                    river[myRow].crocs[myID].x--;
+                    if(river[myRow].crocs[myID].x <= 0 - CROCODILE_COLUMNS)
+                    {
+                        river[myRow].crocs[myID].x = STOPPED_CROCODILE;
+                        river[myRow].crocs[myID].y = STOPPED_CROCODILE;
+                    }
+                    pthread_mutex_unlock(&riverMutex[myRow]);
+                }
+                pthread_mutex_lock(&riverMutex[myRow]);
+                if(river[myRow].crocs[myID].splash > 0)
+                    river[myRow].crocs[myID].splash--;
+                if(river[myRow].crocs[myID].splash == 0)
+                {
+                    river[myRow].crocs[myID].x = STOPPED_CROCODILE;
+                    river[myRow].crocs[myID].y = STOPPED_CROCODILE;
+                }
+                pthread_mutex_unlock(&riverMutex[myRow]);
+
+            }
+        }
+        update++;
+        usleep(FRAME_UPDATE);
+    } while (true);
+    
 }
 
 
