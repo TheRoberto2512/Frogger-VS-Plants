@@ -201,6 +201,9 @@ void *mainManager(void *args)
     bool doFrogProjectileExist[MAX_FROG_PROJ];
     setToFalse(doFrogProjectileExist, MAX_FROG_PROJ);
 
+    Crocodile collidedCroc; collidedCroc.PTID = 0;   // per salvare il coccodrillo su cui la rana sale
+    short xDiff; short oldFrogX; short xFDiff;
+
     bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
     Enemy AllEnemies[MAX_ENEMIES]; 
     setToFalse(printEnemies, MAX_ENEMIES);
@@ -216,6 +219,10 @@ void *mainManager(void *args)
     short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
     short DebugLine = 0;                            // per la stampa delle schermate aggiuntive di debug
     short minRow = ROWS_PER_MAP - 1;                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
+
+    short yDanger = -1;                             // coordinata dove verra' stampato il segnale d'allerta
+    short dirDanger = -1;                           // direzione dove verra' stampato il segnale d'allerta
+    bool printDanger = false;                       // FLAG per gestire la stampa del segnale d'allerta
 
     bool emptyLilyPads[5] = {true, true, true, true, true};
     double r = BLOCK_PER_MAP_ROWS / 5;
@@ -319,7 +326,15 @@ void *mainManager(void *args)
         }
 
         // COLLISIONI
-        bool frogPrjsEnemiesCollided = false;
+
+        //Rana e proiettile nemico da fare
+       
+
+        // COLLISIONI PROIETTILI RANA - nemici / coccodrilli / proiettili nemici
+        bool twoProjectilesCollided = false;                    // proiettile rana - proiettile nemico
+        bool frogPrjsEnemiesCollided = false;                   // proeittile rana - nemico
+        bool frogPrjsCrocodileCollided = false;                 // proiettile rana - coccodrillo
+
         for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
         {
             if(doFrogProjectileExist[fr]) // se il proiettile esiste
@@ -347,8 +362,53 @@ void *mainManager(void *args)
                                 aliveEnemies[e] = false;
                                 pthread_mutex_unlock(&semAliveEnemies);
 
-                                printEnemies[e] = false;
+                                printEnemies[e] = false; 
                             }
+                        }
+                    }
+                }
+                else if(ROW > RIVERSIDE_ROWS && ROW <= (RIVERSIDE_ROWS+RIVER_ROWS))
+                {
+                    ROW = ROW - (RIVERSIDE_ROWS + 1);           // calcoliamo la riga del fiume corrispondente
+
+                    for(short c=0;c< MAX_ENEMIES && !frogPrjsEnemiesCollided;c++)
+                    {
+                        frogPrjsCrocodileCollided = crocFrogProjCD(river[ROW].crocs[c].x, river[ROW].crocs[c].y, frogProjectiles[fr].x, frogProjectiles[fr].y);
+                        if(frogPrjsCrocodileCollided) // se c'e' stata una collisione
+                        {
+                            pthread_mutex_lock(&semDoProjectileExist);
+                            doProjectileExist[fr] = false;                    // false per far capire al thread che il proiettile non deve più esistere
+                            pthread_mutex_unlock(&semDoProjectileExist);
+                            if(river[ROW].crocs[c].splash != GOOD_CROC_FLAG) // se e' cattivo
+                            {
+                                pthread_mutex_lock(&riverMutex[ROW]);
+                                river[ROW].crocs[c].splash=GOOD_CROC_FLAG;
+                                pthread_mutex_unlock(&riverMutex[ROW]);
+                            } 
+                            break;
+                        }
+                    }
+                }
+
+                for(short en = 0; en < MAX_ENEMIES&& !twoProjectilesCollided; en++)             
+                {
+                    if(enemyProjectilesAlive[en])
+                    {
+                        twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogProjectiles[fr].x, frogProjectiles[fr].y, enemyProjectiles[en].x, enemyProjectiles[en].y);
+                        if(twoProjectilesCollided)
+                        {
+                           
+
+                            pthread_mutex_lock(&semEnemyProjectilesAlive);
+                            enemyProjectilesAlive[en] = false;
+                            easyKill(enemyProjectiles[en].PTID);
+                            pthread_mutex_unlock(&semEnemyProjectilesAlive);
+
+                            pthread_mutex_lock(&semDoProjectileExist);
+                            doProjectileExist[fr] = false;                    // false per far capire al thread che il proiettile non deve più esistere
+                            pthread_mutex_unlock(&semDoProjectileExist); 
+                            
+                            printAllEnemyProjectiles[en]=false;                                      
                         }
                     }
                 }
@@ -414,7 +474,72 @@ void *mainManager(void *args)
                 currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
-        
+        else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
+        {
+            frogRow -= (RIVERSIDE_ROWS + 1);
+
+            for(short c=0; c<MAX_CROCODILE_PER_ROW;c++)
+            {
+                frogOnCrocodile = frogCrocodileCD(frogger.x, river[frogRow].crocs[c].x);
+                if(frogOnCrocodile) // se c'e' stata una collisione con un coccodrillo
+                {
+                    if(collidedCroc.PTID != river[frogRow].crocs[c].PTID)   // se la rana e' appena salita su quel coccodrillo
+                    {
+                        collidedCroc = river[frogRow].crocs[c];           // salviamo i dati sul coccodrillo
+                        xDiff = frogger.x - collidedCroc.x;     // differenza rana-coccodrillo
+                        oldFrogX = frogger.x;                   // salviamo le coordinate della rana
+                    }
+                    else                                        // se la rana e' rimasta sullo stesso coccodrillo
+                    {
+                        bool updateFrog = false; short xDiff2;
+
+                        if(collidedCroc.x != river[frogRow].crocs[c].x || frogger.x != oldFrogX) 
+                        {
+                            xDiff2 = frogger.x - river[frogRow].crocs[c].x;   // calcoliamo la differenza attuale
+                            updateFrog = true;
+
+                            short realDiff = (xDiff - xDiff2);
+
+                            if(realDiff != 1 && realDiff != -1)         // si e' spostata anche la rana
+                            {
+                                if(realDiff > 1)
+                                    realDiff -= COLUMNS_PER_BLOCK;
+                                else if(realDiff < -1)
+                                    realDiff += COLUMNS_PER_BLOCK;
+                            }
+                            frogger.x += realDiff; // cosi' la rana si e' mossa mantenendo la differenza iniziale
+                        }
+
+                        if(updateFrog)
+                        {
+                            if (frogger.x < 1)
+                                frogger.x = 1;
+                            else if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
+                                frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
+
+                            oldFrogX = frogger.x;
+
+                            pthread_mutex_lock(&semFrogger);
+                            Frogger=frogger;
+                            pthread_mutex_unlock(&semFrogger);
+                        }
+
+                        collidedCroc = river[frogRow].crocs[c];               // salvataggio
+                        xDiff = frogger.x - collidedCroc.x;
+
+                        if(collidedCroc.splash > 0 && collidedCroc.splash < 30)
+                        {
+                            printDanger = true;
+                            yDanger = collidedCroc.y;
+                            dirDanger = collidedCroc.direction;
+                        }
+                        break;
+                    }                        
+                }
+            }
+        }
+
+
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
         {
@@ -503,6 +628,11 @@ void *mainManager(void *args)
         // STAMPA LA RANA
         pthread_mutex_lock(&semCurses);  printFrog(frogger.x, frogger.y);  pthread_mutex_unlock(&semCurses);
 
+        if(printDanger)
+        {
+            printDangerSign(dirDanger, yDanger); printDanger = false;
+        }  
+
         // SCHERMATE DI DEBUG
         if(GENERAL_DEBUG)
         {
@@ -531,7 +661,33 @@ void *mainManager(void *args)
             }
             if(RIVER_DEBUG)
             {
-              
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, RIVER_ROWS+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+2, "RIVER");
+                
+                for(short r = 0; r < RIVER_ROWS; r++)
+                {
+                    short nCroc=0;
+                    for(short c = 0; c < MAX_CROCODILE_PER_ROW; c++)
+                    {
+                        if(river[r].crocs[c].x != STOPPED_CROCODILE && river[r].crocs[c].y != STOPPED_CROCODILE)
+                            nCroc++;
+                    }
+                    if(!nCroc)
+                        CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %-2d", r, nCroc);
+                    if(nCroc == 0)
+                    {
+                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "  NULL  ");
+                    }
+                    else
+                    {
+                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "NOT NULL");
+                    }
+                    CHANGE_COLOR(DEFAULT);
+                }
+                DebugLine += 2 + (RIVER_ROWS) + 1;
+                pthread_mutex_unlock(&semCurses);
             }
             if(ENEMIES_DEBUG)
             {
@@ -564,8 +720,80 @@ void *mainManager(void *args)
             }
             if(COLLISION_DEBUG)
             {
-                
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 7, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
+                if(frogEnemyCollided)   // FROG - ENEMIES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                }
+                    
+                if(false)  // FROG - ENEMY PROJECTILES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                }  
+
+                if(frogOnCrocodile)  // FROG - CROCODILE
+                {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "%03d : %03d", collidedCroc.x, collidedCroc.y);
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    short fRow = yToRowNumber(frogger.y);
+                    if(fRow > RIVERSIDE_ROWS && fRow <= (RIVERSIDE_ROWS+RIVER_ROWS))
+                        CHANGE_COLOR(RED_DEBUG);
+                    else
+                        CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(twoProjectilesCollided)  // FROG PROJECTILES - ENEMY PROJECTILES
+                {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(frogPrjsEnemiesCollided)  // ENEMY - FROG PROJECTILES
+                {
+                    CHANGE_COLOR(GREEN_DEBUG);
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS, "  true   ");
+                    CHANGE_COLOR(DEFAULT);
+                } else {
+                    CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS, "  false  ");
+                    CHANGE_COLOR(DEFAULT);
+                } 
+
+                if(COLLISION_DEBUG_INFO)
+                {
+                    mvprintw(DebugLine+1, DEBUG_COLUMNS + 11, "FROG - ENEMIES");
+                    mvprintw(DebugLine+2, DEBUG_COLUMNS + 11, "FROG - ENEMY PROJECTILES");
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS + 11, "FROG - CROCODILES");
+                    mvprintw(DebugLine+4, DEBUG_COLUMNS + 11, "FROG PROJECTILES - ENEMY PROJECTILES");
+                    mvprintw(DebugLine+5, DEBUG_COLUMNS + 11, "ENEMY - FROG PROJECTILES");
+                }
+                DebugLine += (2 + 1 + 1);
+                pthread_mutex_unlock(&semCurses);
             }
+            
         }  
 
         // AGGIORNA LO STATO DEI NEMICI

@@ -18,11 +18,11 @@
 #define GENERAL_DEBUG true
 #define FROG_DEBUG true
 #define FROG_PROJECTILES_DEBUG true
-#define RIVER_DEBUG false
+#define RIVER_DEBUG true
 #define ENEMIES_DEBUG true
 #define ENEMIES_PROJECTILES_DEBUG true
-#define COLLISION_DEBUG false
-#define COLLISION_DEBUG_INFO false
+#define COLLISION_DEBUG true
+#define COLLISION_DEBUG_INFO true
 
 // Costanti per calcolare la distanza tra un coccodrillo e l'altro.
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
