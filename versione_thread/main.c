@@ -42,9 +42,10 @@ int main()
     FILE *fp = fopen("debug.txt", "w"); // cancella il file di debug!
     fclose(fp);    
 
-    difficult = MEDIUM;
-
     bool playAgain = game(); 
+
+    if(playAgain)
+        execl("./game", "./game", NULL);
 
     return 0;
 }
@@ -138,6 +139,9 @@ bool game()
     pthread_t tFrog, tFrogProjectilesHandler, crocOne,tRiverHandler;
     bool playAgain = false; bool continua = true;
 
+    difficult = Menu();
+    if(difficult != -1) // se non e' stato scelto exit
+    {
     setStartingVariables();
 
     // CREAZIONE THREADS
@@ -177,6 +181,10 @@ bool game()
 
     mvprintw(2,0, "Vuoi giocare ancora? (Y/N)"); refresh();
 
+    
+    char easy[POINT_NUM], medium[POINT_NUM], hard[POINT_NUM];
+
+    GetScore(easy, medium, hard);
     int ch;
     do {
         if((ch = getch()) != ERR)
@@ -197,6 +205,37 @@ bool game()
         }
     } while (continua);
 
-    endwin();
+
+    char printToFile[POINT_NUM+1];
+    sprintf(printToFile, "%04d", currentGame.score);
+    short prevScore = 2000;
+    switch (difficult)
+    {
+        case EASY:
+            prevScore = charToShort(easy);
+            if(currentGame.score > prevScore)
+            {
+                SetScore(printToFile, medium, hard);
+            }
+            break;
+
+        case MEDIUM:
+            prevScore = charToShort(medium);
+            if(currentGame.score > prevScore)
+            {
+                SetScore(easy, printToFile, hard);
+            }
+            break;
+
+        case HARD:
+            prevScore = charToShort(hard);
+            if(currentGame.score > prevScore)
+            {
+                SetScore(easy, medium, printToFile);
+            }
+            break;
+    }
+    }
+    endwin();    
     return playAgain;
 }

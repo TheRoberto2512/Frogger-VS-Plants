@@ -326,8 +326,19 @@ void *mainManager(void *args)
         }
 
         // COLLISIONI
-
-        //Rana e proiettile nemico da fare
+        bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
+        for(short f = 0; f < MAX_ENEMIES && !frogEnPrjsCollided; f++)    
+        {
+            if(printAllEnemyProjectiles[f])
+            {
+                frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemyProjectiles[f].x, enemyProjectiles[f].y);
+                if(frogEnPrjsCollided && !GODMODE)
+                {
+                    currentGame.lives = currentGame.lives - 1; endManche = true;
+                    break;
+                }
+            }
+        }
        
 
         // COLLISIONI PROIETTILI RANA - nemici / coccodrilli / proiettili nemici
@@ -396,9 +407,7 @@ void *mainManager(void *args)
                     {
                         twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogProjectiles[fr].x, frogProjectiles[fr].y, enemyProjectiles[en].x, enemyProjectiles[en].y);
                         if(twoProjectilesCollided)
-                        {
-                           
-
+                        {         
                             pthread_mutex_lock(&semEnemyProjectilesAlive);
                             enemyProjectilesAlive[en] = false;
                             easyKill(enemyProjectiles[en].PTID);
@@ -419,7 +428,7 @@ void *mainManager(void *args)
         bool frogEnemyCollided = false;                         // rana scontrata con un nemico
         bool froggerEnteredLilypads = false;                    // rana dentro una tana
         bool frogOnCrocodile = false;                           // rana sul coccodrillo
-        
+
         short frogRow = yToRowNumber(frogger.y);
         if(frogRow == 0) // se la rana e' all'altezza delle tane
         {
@@ -480,12 +489,12 @@ void *mainManager(void *args)
 
             for(short c=0; c<MAX_CROCODILE_PER_ROW;c++)
             {
-                frogOnCrocodile = frogCrocodileCD(frogger.x, river[frogRow].crocs[c].x);
+                frogOnCrocodile = frogCrocodileCD(frogger.x, backupRiver[frogRow].crocs[c].x);
                 if(frogOnCrocodile) // se c'e' stata una collisione con un coccodrillo
                 {
-                    if(collidedCroc.PTID != river[frogRow].crocs[c].PTID)   // se la rana e' appena salita su quel coccodrillo
+                    if(collidedCroc.PTID != backupRiver[frogRow].crocs[c].PTID)   // se la rana e' appena salita su quel coccodrillo
                     {
-                        collidedCroc = river[frogRow].crocs[c];           // salviamo i dati sul coccodrillo
+                        collidedCroc = backupRiver[frogRow].crocs[c];           // salviamo i dati sul coccodrillo
                         xDiff = frogger.x - collidedCroc.x;     // differenza rana-coccodrillo
                         oldFrogX = frogger.x;                   // salviamo le coordinate della rana
                     }
@@ -493,9 +502,9 @@ void *mainManager(void *args)
                     {
                         bool updateFrog = false; short xDiff2;
 
-                        if(collidedCroc.x != river[frogRow].crocs[c].x || frogger.x != oldFrogX) 
+                        if(collidedCroc.x != backupRiver[frogRow].crocs[c].x || frogger.x != oldFrogX) 
                         {
-                            xDiff2 = frogger.x - river[frogRow].crocs[c].x;   // calcoliamo la differenza attuale
+                            xDiff2 = frogger.x - backupRiver[frogRow].crocs[c].x;   // calcoliamo la differenza attuale
                             updateFrog = true;
 
                             short realDiff = (xDiff - xDiff2);
@@ -524,18 +533,22 @@ void *mainManager(void *args)
                             pthread_mutex_unlock(&semFrogger);
                         }
 
-                        collidedCroc = river[frogRow].crocs[c];               // salvataggio
+                        collidedCroc = backupRiver[frogRow].crocs[c];               // salvataggio
                         xDiff = frogger.x - collidedCroc.x;
-
-                        if(collidedCroc.splash > 0 && collidedCroc.splash < 30)
-                        {
-                            printDanger = true;
-                            yDanger = collidedCroc.y;
-                            dirDanger = collidedCroc.direction;
-                        }
-                        break;
-                    }                        
+                    } 
+                    if(collidedCroc.splash > 0 && collidedCroc.splash < 30)
+                    {
+                        printDanger = true;
+                        yDanger = collidedCroc.y;
+                        dirDanger = collidedCroc.direction;
+                    }
+                    break;                       
                 }
+            }
+            if(frogOnCrocodile == false)
+            {
+                currentGame.lives--;
+                endManche=true;
             }
         }
 
@@ -873,7 +886,7 @@ void *mainManager(void *args)
             frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1;    // x iniziale (centro mappa)
             frogger.y = ROWS_PER_MAP - 1;                                   // y iniziale (ultima riga)
             pthread_mutex_lock(&semFrogger); Frogger = frogger; pthread_mutex_unlock(&semFrogger);
-
+            minRow = ROWS_PER_MAP - 1;
             for(short p = 0; p < MAX_ENEMIES; p++)
             {
                 pthread_mutex_lock(&semAllEnemies);
