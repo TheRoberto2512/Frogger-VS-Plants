@@ -5,8 +5,8 @@
 # 🐸**FROGGER VS PLANTS**🥀
 
 <p align="center">
-<img src="https://github.com/TheRoberto2512/Frogger-VS-Plants/assets/70667004/9d7f9a04-2616-4c4f-be34-5c88f473bf38" width="500" height="500">
-<img src="https://github.com/TheRoberto2512/Frogger-VS-Plants/assets/70667004/95d650bb-6835-4538-9203-caf896b25fbb" width="500" height="500">
+<img src="https://github.com/TheRoberto2512/Frogger-VS-Plants/assets/70667004/9d7f9a04-2616-4c4f-be34-5c88f473bf38" width="400" height="400">
+<img src="https://github.com/TheRoberto2512/Frogger-VS-Plants/assets/70667004/95d650bb-6835-4538-9203-caf896b25fbb" width="400" height="400">
 </p>
 
 
