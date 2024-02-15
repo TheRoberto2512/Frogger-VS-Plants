@@ -689,14 +689,6 @@ void *mainManager(void *args)
                     if(!nCroc)
                         CHANGE_COLOR(RED_DEBUG);
                     mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %-2d", r, nCroc);
-                    if(nCroc == 0)
-                    {
-                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "  NULL  ");
-                    }
-                    else
-                    {
-                        mvprintw(DebugLine+1+r, DEBUG_COLUMNS + 11, "NOT NULL");
-                    }
                     CHANGE_COLOR(DEFAULT);
                 }
                 DebugLine += 2 + (RIVER_ROWS) + 1;
@@ -937,6 +929,7 @@ void *riverHandler(void *args)
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
     bool keepGenerating = true;
     newCrocodileScene(river,spawnTimers);
+    short nullCounters[RIVER_ROWS]={0};
     
     do
     {
@@ -954,6 +947,34 @@ void *riverHandler(void *args)
             else
             {
                 spawnTimers[i]--;
+            }
+        }
+
+        for(short i = 0; i < RIVER_ROWS; i++)
+        {
+            short nCroc=0;
+            for(short c = 0; c < MAX_CROCODILE_PER_ROW; c++)
+            {
+                if(river[i].crocs[c].x != STOPPED_CROCODILE && river[i].crocs[c].y != STOPPED_CROCODILE)
+                    nCroc++;
+            }
+            if(!nCroc)
+            {
+                if(nullCounters[i] % 150 == 0)
+                {
+                    nullCounters[i] = 0;
+                    spawnCrocodile(i,spawns[river[i].direction],computeY(i));
+                    if(river[i].direction) // se va a destra
+                        spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * river[i].speed;
+                    else
+                        spawnTimers[i] = (crocodileSpace() + CROCODILE_COLUMNS) * river[i].speed; 
+                }
+                else
+                    nullCounters[i]++;
+            }
+            else
+            {
+                nullCounters[i]=0;
             }
         }
 
