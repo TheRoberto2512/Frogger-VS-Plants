@@ -1,5 +1,4 @@
 #include <curses.h>
-
 #include "sprite.h"
 
 

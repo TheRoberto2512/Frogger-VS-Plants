@@ -110,4 +110,4 @@ void istanziaColori()
     init_pair(ROSSO_E_BIANCO, LOW, BIANCO);
     init_pair(ROSSO_E_CELESTE, LOW, CELESTE); 
 }
-// initpair( NOME , FOREGROUND, BACKGROUND )
+// initpair ( NOME , FOREGROUND, BACKGROUND )

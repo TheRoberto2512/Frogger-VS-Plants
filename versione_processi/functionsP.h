@@ -7,19 +7,34 @@
 \************/
 
 // Numero di microsecondi tra un update e l'altro.
-#define FRAME_UPDATE 33 * 1000
+#define FRAME_UPDATE 27.5 * 1000
 
 // Costanti per stampare a video le coordinate di debug.
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
+// Costante per attivare/disattivare le stampe di debug.
 #define GENERAL_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate della rana.
 #define FROG_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei proiettili della rana.
 #define FROG_PROJECTILES_DEBUG false
+
+// Costante per attivare/disattivare la stampa del numero di coccodrilli per ogni corsia.
 #define RIVER_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei nemici.
 #define ENEMIES_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei proiettili nemici.
 #define ENEMIES_PROJECTILES_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle collisioni rilevate.
 #define COLLISION_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle informazioni aggiuntive sulle collisioni rilevate.
 #define COLLISION_DEBUG_INFO false
 
 // Costanti per non confondere il comportamento delle pipe.
@@ -123,5 +138,8 @@ void setToFalse(bool array[], short size);
 // Funzione per generare nuove posizioni per tutti i nemici.
 void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
 
-// Funzioen per creare il processo nemico.
+// Funzione per creare il processo nemico.
 void spawnEnemy(int enHToMain[], int PHToMain[], Enemy allEnemies[], short enemyID, short speed);
+
+// Funzione per stampare dei messaggi su un file di testo.
+void logChat(char *msg);

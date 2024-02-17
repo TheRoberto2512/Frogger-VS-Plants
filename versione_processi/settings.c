@@ -2,7 +2,7 @@
 
 GameRules getRules(short difficult)
 {
-    GameRules rules;
+    GameRules rules; // qui verranno caricate le regole in base alla difficolta'
 
     switch (difficult)
     {

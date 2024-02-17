@@ -79,7 +79,7 @@ void printMap(bool bottom, bool lilyPads[], bool newBG);
 // Stampa una riga di terreno, usata per marciapiede e sponda (implementata dentro printMap).
 void printGroundLine(short x, short y);
 
-// Stampa una riga di fiume.
+// Stampa una corsia del fiume.
 void printRiverLine(short x, short y);
 
 // Stampa la riga contenene le tane della rana (implementata dentro printMap).

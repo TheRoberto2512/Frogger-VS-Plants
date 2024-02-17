@@ -2,7 +2,10 @@
 #include "structs.h"
 #include "sprite.h"
 
-#define SKIPPED_UPDATES 5
+
+/**************\
+*  STRUTTURE   *
+\**************/
 
 typedef struct crocElement
 {
@@ -17,8 +20,24 @@ typedef struct CrocList
     short counts[RIVER_ROWS];
 } CrocList;
 
+
+/************\
+*  COSTANTI  *
+\************/
+
+// Costante per definire il limite destro.
 #define RIGHT_LIMIT COLUMNS_PER_MAP + 1
+
+// Costante per definire il limite sinistro.
 #define LEFT_LIMIT 0 - CROCODILE_COLUMNS
+
+// Costante per decidere dopo quanti update mancati eliminare un coccodrillo.
+#define SKIPPED_UPDATES 5
+
+
+/*************************\
+*  PROTOTIPI DI FUNZIONE  *
+\*************************/
 
 // Aggiorna un coccodrillo esistente (se non esiste lo crea).
 void Update(CrocList* list, short lane, Crocodile croc, short updateTime);

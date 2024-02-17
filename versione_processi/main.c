@@ -15,6 +15,7 @@
 #include "settings.h"
 #include "menu.h"
 
+// Funzione principale per avviare il gioco.
 bool game();
 
 int main()
@@ -28,6 +29,12 @@ int main()
 
     GameRules regole = getRules(MEDIUM);
 
+    if(GENERAL_DEBUG)
+    {
+        FILE *fp = fopen("debug.txt", "w"); // cancella il file di debug!
+        fclose(fp);  
+    } 
+
     bool playAgain = game(&regole);
 
     if(playAgain)
@@ -38,6 +45,7 @@ int main()
 bool game()
 {
     bool playAgain = false;
+
     // PIPES (tutte impostate in modalita' non bloccante per la lettura)
     int mainToFrog[2]; pipe(mainToFrog); fcntl(mainToFrog[READ], F_SETFL, O_NONBLOCK); // main comunica alla rana
     int frogToMain[2]; pipe(frogToMain); fcntl(frogToMain[READ], F_SETFL, O_NONBLOCK); // rana comunica al main
@@ -55,7 +63,9 @@ bool game()
 
     if(croc == 0)
     {
-        kill(getpid(), SIGSTOP); // bisogna per forza fare SIGCONT prima di chiudere il programma
+        kill(getpid(), SIGSTOP);  // bisogna per forza fare SIGCONT prima di chiudere il programma
+        close(crocToMain[READ]);  // pipe dove i coccodrilli scriveranno al main
+        close(mainToRivH[WRITE]); // pipe dove il main comunichera' col RiverHandler
         riverHandler(crocToMain, mainToRivH);
     }
     else if(croc > 0)
@@ -65,6 +75,9 @@ bool game()
         if(frogPRJH == 0)
         {
             kill(getpid(), SIGSTOP);
+            close(frogToFPH[WRITE]); // pipe dove leggera' le coordinate della rana
+            close(PHToMain[READ]);   // pipe dove scrivera' le coordinate dei proiettili al main
+            close(mainToFPH[WRITE]); // pipe dove leggera' dal main i proiettili distrutti
             frogProjectilesHandler(frogToFPH, PHToMain, mainToFPH);
         }
         else
@@ -74,12 +87,14 @@ bool game()
             if(enH == 0)
             {
                 kill(getpid(), SIGSTOP); // bisogna per forza fare SIGCONT prima di chiudere il programma
+                close(enHToMain[READ]);  // pipe dove scrive le coordinate dei nemici al main   
+                close(mainToEnH[WRITE]); // pipe dove legge gli ID da rigenerare dal main
+                close(PHToMain[READ]);   // pipe dove scrive le coordinate dei proiettili al main
                 enemiesHandler(enHToMain, mainToEnH, PHToMain);
             }
             else
             {
                 initscr(); noecho(); curs_set(0);
-                
                 start_color(); istanziaColori(); cbreak();
                 nodelay(stdscr, TRUE); // nessun delay per la getch()
                 keypad(stdscr, TRUE); // attiva i tasti speciali (le frecce)
@@ -92,7 +107,7 @@ bool game()
                     kill(getpid(), SIGSTOP);
                     close(frogToMain[READ]);  // pipe dove scrive le coordinate
                     close(mainToFrog[WRITE]); // pipe dove legge le coordinate aggiornate
-                    close(PHToMain[READ]);    // pipe dove comunica la creazione di un proiettile rana
+                    close(frogToFPH[READ]);   // pipe dove comunica la creazione di un proiettile rana
 
                     frogHandler(frogToMain, mainToFrog, frogToFPH);
                 }
@@ -113,6 +128,7 @@ bool game()
                         GameUpdates endedGame = mainManager(difficult, frogToMain, mainToFrog, crocToMain, mainToRivH, PHToMain, mainToFPH, enHToMain, mainToEnH);
 
                         clear(); int ch; bool continua = true;
+                        CHANGE_COLOR(DEFAULT);
                         if(endedGame.lives == 0) // se e' a zero vuol dire che e' morto esaurendo le vite
                             mvprintw(0,0, "Game over!%lc Il tuo punteggio e' %d!", L'💀', endedGame.score);
                         else
@@ -124,8 +140,7 @@ bool game()
 
                         GetScore(easy, medium, hard);
 
-                        do
-                        {
+                        do{
                             if((ch = getch()) != ERR)
                             {
                                 switch(ch)
@@ -147,7 +162,7 @@ bool game()
                         char printToFile[POINT_NUM+1];
                         sprintf(printToFile, "%04d", endedGame.score);
 
-                        short prevScore = 2000;
+                        short prevScore;
                         switch (difficult)
                         {
                             case EASY:

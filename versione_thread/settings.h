@@ -74,6 +74,7 @@ GameRules getRules(short difficult);
 #define VICTORY 1000
 
 
+
 /**********\
 *  REGOLE  *
 \**********/

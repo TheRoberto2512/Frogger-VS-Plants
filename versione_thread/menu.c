@@ -9,6 +9,10 @@
 #include "menu.h"
 
 
+/************\
+*  FUNZIONI  *
+\************/
+
 short Menu()
 {
     short pointerPos = 0; int ch = -1; short i = 0;
@@ -28,8 +32,6 @@ short Menu()
             case 3:
             printScoreMenu(1,1);
             break;        
-            default:
-            break;
         }
 
         if((ch = getch()) != ERR)

@@ -254,7 +254,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
 
             if(cList.lanes[i] == NULL)
             {
-                if(nullCounters[i] % 30 == 0)
+                if(nullCounters[i] % 60 == 0)
                 {
                     nullCounters[i] = 0;
                     Crocodile alert; alert.x = CROC_NOW; alert.y = i; 
@@ -307,7 +307,7 @@ GameUpdates mainManager(short difficult, int frogToMain[], int mainToFrog[], int
         } while (bytes_read != -1);
         
         // COLLISIONI
-        bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
+        bool frogEnPrjsCollided = false;                        // proiettili nemici - rana
         for(short f = 0; f < MAX_ENEMIES && !frogEnPrjsCollided; f++)    
         {
             if(printEnProj[f])
@@ -1107,7 +1107,7 @@ void randomSeed()
 
     struct timespec CurrentTime;
 
-    clock_gettime(CLOCK_REALTIME, &CurrentTime);
+    clock_gettime(CLOCK_REALTIME, &CurrentTime); // l'IDE potrebbe riportare un errore ma la costante e' inclusa in time.h
 
     srand(time(NULL) % pid * CurrentTime.tv_nsec);
     // prendiamo il numero di secondi trascorsi dal 1° gennaio 1970, facciamo il modulo per il pid e moltiplichiamo i nanosecondi correnti
@@ -1265,4 +1265,12 @@ void spawnEnemy(int enHToMain[], int PHToMain[], Enemy allEnemies[], short enemy
         allEnemies[enemyID].PID = a;                                    // salviamo il PID del nemico appena creato
         write(enHToMain[WRITE], &allEnemies[enemyID], sizeof(Enemy));   // lo salviamo dell'array con tutti i nemici
     }
+}
+
+void logChat(char *msg)
+{
+    FILE *fp = fopen("debug.txt", "a");
+    fprintf(fp, "%s", msg);
+    fprintf(fp, "\n");
+    fclose(fp);
 }

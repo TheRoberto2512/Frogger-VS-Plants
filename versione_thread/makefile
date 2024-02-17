@@ -1,5 +1,6 @@
 CFLAGS = -g -c
 LIBS = -lncursesw
+# si usa -lncursesw invece di -lncurses perche' si vogliono usare i caratteri UNICODE
 
 all: main.c colors.o sprite.o functionsT.o settings.o collisionDetector.o menu.o
 	gcc -g main.c sprite.o colors.o functionsT.o settings.o collisionDetector.o menu.o $(LIBS) -lpthread -o game 
@@ -23,4 +24,4 @@ colors.o: colors.c colors.h
 	gcc $(CFLAGS) colors.c $(LIBS)
 
 clean:
-	rm -f *.o *.gch
+	rm -f *.o *.gch debug.txt

@@ -53,9 +53,9 @@ typedef struct projectile
 #define STOPPED_CROCODILE -100
 typedef struct riverRow
 {
-    short direction;
-    short speed;
-    Crocodile crocs[MAX_CROCODILE_PER_ROW];
+    short direction;                        // direzione da seguire
+    short speed;                            // velocita'
+    Crocodile crocs[MAX_CROCODILE_PER_ROW]; // coccodrilli presenti
 } RiverRow;
 #endif
 
@@ -63,7 +63,7 @@ typedef struct riverRow
 #define CROC_POS
 typedef struct crocPos
 {
-    short row;
-    short ID;
+    short row;          // riga del fiume
+    short ID;           // ID del coccodrillo
 } CrocPos;
 #endif

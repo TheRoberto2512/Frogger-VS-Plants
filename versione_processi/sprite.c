@@ -592,4 +592,4 @@ void printDangerSign(short direction, short y)
     }
 }
 
-// ▀ █ ▄
+// Caratteri usati: ▀ █ ▄

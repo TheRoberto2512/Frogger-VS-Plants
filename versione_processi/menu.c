@@ -3,11 +3,14 @@
 #include <stdlib.h>
 #include <time.h>
 
-
 #include "sprite.h"
 #include "colors.h"
 #include "menu.h"
 
+
+/************\
+*  FUNZIONI  *
+\************/
 
 short Menu()
 {
@@ -28,8 +31,6 @@ short Menu()
             case 3:
             printScoreMenu(1,1);
             break;        
-            default:
-            break;
         }
 
         if((ch = getch()) != ERR)

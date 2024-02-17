@@ -8,8 +8,7 @@
 #include "sprite.h"
 #include "collisionDetector.h"
 
-// La si vuole "nascosta" e utilizzabile solo dalle funzioni di questo file.
-void KillR(CrocElement* elem, pid_t crocPid);
+void KillR(CrocElement* elem, pid_t crocPid); // La si vuole "nascosta" e utilizzabile solo dalle funzioni di questo file.
 
 void Update(CrocList* list, short lane, Crocodile croc, short updateTime)
 {
@@ -31,6 +30,7 @@ void Update(CrocList* list, short lane, Crocodile croc, short updateTime)
         UpdateR(list->lanes[lane], croc, updateTime);  
     }
 
+    // aggiorna il numero di coccodrilli per ogni corsia
     CrocElement* c = list->lanes[lane]; short cont = 0;
     while(c != NULL)
     {
@@ -133,29 +133,13 @@ void killAll(CrocList* list)
 }
 
 void FixLane(CrocList* list, short lane)
-{
-    /*
-    FILE *fp = fopen("file.txt", "w");
-    CrocElement *c = list->lanes[lane];
-    while(c != NULL)
-    {
-        //Kill(list, lane, list->lanes[lane]->croc.PID);
-        fprintf(fp, "-------------------------------\n");
-        fprintf(fp, "[%d] %d . %d . %d\n", lane, c->croc.PID, c->croc.x, c->croc.y);
-        c = c->next;
-    }
-    fclose(fp);
-    */
-    
-    int cont = 0;
-
+{  
     CrocElement* c = list->lanes[lane];                         // pesca il primo
     while (c->croc.x >= RIGHT_LIMIT || c->croc.x <= LEFT_LIMIT) // se sgarra
     {
         pid_t toKill = c->croc.PID;                             // salva il pid
         c = c->next;                                            // va avanti al secondo
         Kill(list, lane, toKill);                               // uccide il primo
-        cont++;
     }
     // una volta uscito da qui, c rispetta i limiti ma potrebbe avere successori che sgarrano
     do
@@ -165,7 +149,7 @@ void FixLane(CrocList* list, short lane)
             if(c->next->croc.x >= RIGHT_LIMIT || c->next->croc.x <= LEFT_LIMIT) // controlliamo il successore
             {
                 pid_t toKill = c->next->croc.PID; 
-                KillR(c, toKill); cont++;
+                KillR(c, toKill);
             }
             else
             {
@@ -173,17 +157,6 @@ void FixLane(CrocList* list, short lane)
             }
         }
     } while (c->next != NULL);
-
-    /*
-    if(cont > 0)
-    {
-        FILE *f = fopen("report.txt", "a");
-        fprintf(f, "-------------------------------\n");
-        fprintf(f, "[%d] Ho ucciso %d coccodrilli\n", lane, cont);
-        fclose(f);
-    }
-    */   
-
 }
 
 void printList(CrocList *list)

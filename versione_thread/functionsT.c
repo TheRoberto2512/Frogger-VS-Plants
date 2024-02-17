@@ -13,25 +13,26 @@
 #include "settings.h"
 #include "collisionDetector.h"
 
-extern volatile short difficult;                    extern pthread_mutex_t semDifficult;
-extern GameUpdates currentGame;                     extern pthread_mutex_t semCurses;
+extern volatile short difficult;                            extern pthread_mutex_t semDifficult;
+extern GameUpdates currentGame;                             extern pthread_mutex_t semCurses;
 
-extern volatile Frog Frogger;                       extern pthread_mutex_t semFrogger;
+extern volatile Frog Frogger;                               extern pthread_mutex_t semFrogger;
 
-extern Projectile frogProjectiles[MAX_FROG_PROJ];   extern pthread_mutex_t semFrogProjectiles;
-extern bool doProjectileExist[MAX_FROG_PROJ];       extern pthread_mutex_t semDoProjectileExist;
-extern bool genFrogProj;                            extern pthread_mutex_t semGenFrogProj;
+extern volatile Projectile frogProjectiles[MAX_FROG_PROJ];  extern pthread_mutex_t semFrogProjectiles;
+extern volatile bool doProjectileExist[MAX_FROG_PROJ];      extern pthread_mutex_t semDoProjectileExist;
+extern volatile bool genFrogProj;                           extern pthread_mutex_t semGenFrogProj;
 
-extern Enemy allEnemies[MAX_ENEMIES];               extern pthread_mutex_t semAllEnemies;
-extern bool aliveEnemies[MAX_ENEMIES];              extern pthread_mutex_t semAliveEnemies;
+extern volatile Enemy allEnemies[MAX_ENEMIES];              extern pthread_mutex_t semAllEnemies;
+extern volatile bool aliveEnemies[MAX_ENEMIES];             extern pthread_mutex_t semAliveEnemies;
 extern short rowsY[RIVERSIDE_ROWS];                 
 
-extern Projectile enemyProjectiles[MAX_ENEMIES];    extern pthread_mutex_t semEmenyProjectiles;
-extern bool enemyProjectilesAlive[MAX_ENEMIES];     extern pthread_mutex_t semEnemyProjectilesAlive;
+extern volatile Projectile enemyProjectiles[MAX_ENEMIES];   extern pthread_mutex_t semEmenyProjectiles;
+extern volatile bool enemyProjectilesAlive[MAX_ENEMIES];    extern pthread_mutex_t semEnemyProjectilesAlive;
 
-extern RiverRow river[RIVER_ROWS];                  extern pthread_mutex_t riverMutex[RIVER_ROWS];
+extern volatile RiverRow river[RIVER_ROWS];                 extern pthread_mutex_t riverMutex[RIVER_ROWS];
 
 short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};
+
 
 /********************\
 *  FUNZIONI THREAD  *
@@ -127,7 +128,7 @@ void *frogProjectilesHandler(void *arg) // semGenFrogProj, semDoProjectileExist,
         pthread_mutex_unlock(&semDoProjectileExist);
 
         // SE LA RANA HA CHIESTO DI GENERARE UN PROIETTILE
-        if(generate)
+        if(generate && rules.enemies)
         {
             pthread_mutex_lock(&semFrogger); actual = Frogger; pthread_mutex_unlock(&semFrogger);
 
@@ -174,7 +175,7 @@ void *frogProjectilesHandler(void *arg) // semGenFrogProj, semDoProjectileExist,
         }
         pthread_mutex_unlock(&semFrogProjectiles);
 
-        pthread_mutex_lock(&semDoProjectileExist);  // scarichiamo in locale
+        pthread_mutex_lock(&semDoProjectileExist);  // salviamo nel globale
         for(short i = 0; i < MAX_FROG_PROJ; i++)
         {
             doProjectileExist[i] = proiettiliEsistenti[i];
@@ -241,7 +242,7 @@ void *mainManager(void *args)
     }
     pthread_mutex_unlock(&semAliveEnemies);
 
-    for(short k=0;k<MAX_ENEMIES;k++)
+    for(short k = 0; (k < MAX_ENEMIES) && rules.enemies == true; k++)
     {
         spawnEnemy(allEnemies[k].ID);
     }
@@ -258,11 +259,11 @@ void *mainManager(void *args)
         } 
 
         // INIZIO STAMPE
-    pthread_mutex_lock(&semCurses);
+        pthread_mutex_lock(&semCurses);
         customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
         printScoreBoard(currentGame.lives, currentGame.score, (rules.time - seconds), FULL_TIME);  // aggiorna la scoreboard
         printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                   // stampa la mappa                                                                         // stampa i coccodrilli
-    pthread_mutex_unlock(&semCurses);
+        pthread_mutex_unlock(&semCurses);
 
         // LEGGE LA POSIZIONE DELLA RANA
         pthread_mutex_lock(&semFrogger); frogger = Frogger; pthread_mutex_unlock(&semFrogger);
@@ -346,7 +347,7 @@ void *mainManager(void *args)
         bool frogPrjsEnemiesCollided = false;                   // proeittile rana - nemico
         bool frogPrjsCrocodileCollided = false;                 // proiettile rana - coccodrillo
 
-        for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
+        for(short fr = 0; fr < MAX_FROG_PROJ && rules.enemies; fr++)
         {
             if(doFrogProjectileExist[fr]) // se il proiettile esiste
             {
@@ -393,7 +394,7 @@ void *mainManager(void *args)
                             if(river[ROW].crocs[c].splash != GOOD_CROC_FLAG) // se e' cattivo
                             {
                                 pthread_mutex_lock(&riverMutex[ROW]);
-                                river[ROW].crocs[c].splash=GOOD_CROC_FLAG;
+                                river[ROW].crocs[c].splash = GOOD_CROC_FLAG;
                                 pthread_mutex_unlock(&riverMutex[ROW]);
                             } 
                             break;
@@ -401,7 +402,7 @@ void *mainManager(void *args)
                     }
                 }
 
-                for(short en = 0; en < MAX_ENEMIES&& !twoProjectilesCollided; en++)             
+                for(short en = 0; en < MAX_ENEMIES && !twoProjectilesCollided; en++)             
                 {
                     if(enemyProjectilesAlive[en])
                     {
@@ -469,7 +470,7 @@ void *mainManager(void *args)
                 currentGame.lives = currentGame.lives - 1; endManche = true;
             }
         }
-        else if(frogRow >= 1 && frogRow <= RIVERSIDE_ROWS) // se la rana e' all'altezza dell'argine superiore
+        else if(frogRow >= 1 && frogRow <= RIVERSIDE_ROWS && rules.enemies) // se la rana e' all'altezza dell'argine superiore
         {
             for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
             {
@@ -545,13 +546,12 @@ void *mainManager(void *args)
                     break;                       
                 }
             }
-            if(frogOnCrocodile == false)
+            if(!frogOnCrocodile && !GODMODE)
             {
                 currentGame.lives--;
                 endManche=true;
             }
         }
-
 
         // STAMPA TUTTI I PROIETTILI DELLA RANA (SE DENTRO L'AREA DI GIOCO)
         for(short p = 0; p < MAX_FROG_PROJ; p++)
@@ -573,7 +573,7 @@ void *mainManager(void *args)
         }
 
         // STAMPA TUTTI I NEMICI
-        for(short e = 0; e < MAX_ENEMIES; e++)
+        for(short e = 0; e < MAX_ENEMIES && rules.enemies; e++)
         {
             if(printEnemies[e])
             {
@@ -597,7 +597,7 @@ void *mainManager(void *args)
                 if(backupRiver[cc].crocs[ccc].x != STOPPED_CROCODILE && backupRiver[cc].crocs[ccc].y != STOPPED_CROCODILE)
                 {
                     pthread_mutex_lock(&semCurses);
-                    if(backupRiver[cc].crocs[ccc].splash == -10)
+                    if(backupRiver[cc].crocs[ccc].splash == GOOD_CROC_FLAG)
                         printCrocodile(backupRiver[cc].crocs[ccc].x, backupRiver[cc].crocs[ccc].y, backupRiver[cc].direction);
                     else
                         printBadCrocodile(backupRiver[cc].crocs[ccc].x, backupRiver[cc].crocs[ccc].y, backupRiver[cc].direction);
@@ -707,7 +707,7 @@ void *mainManager(void *args)
                     }
                     else
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
-                DebugLine += 2 + (MAX_ENEMIES) + 1;  // 2 (bordi) + MAX_FROG_PROJ (righe) + 1 (spazio)
+                DebugLine += 2 + (MAX_ENEMIES) + 1;  // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
                 pthread_mutex_unlock(&semCurses);
             }
             if(ENEMIES_PROJECTILES_DEBUG)
@@ -824,14 +824,14 @@ void *mainManager(void *args)
         pthread_mutex_unlock(&semAllEnemies);
 
         // GENERA NUOVI NEMICI DOPO LA LORO MORTE
-        if(fps%10==0 &&fps>0)
+        if(fps % 10 == 0 && fps > 0)
         {
             for(short e = 0; e < MAX_ENEMIES; e++)
             {
                 if(aliveEnemies[e] == false)
                 {
                     pthread_mutex_lock(&semAliveEnemies);
-                    aliveEnemies[e]=true;
+                    aliveEnemies[e] = true;
                     pthread_mutex_unlock(&semAliveEnemies);
 
                     pthread_mutex_lock(&semAllEnemies);
@@ -906,20 +906,6 @@ void *mainManager(void *args)
             seconds++;
 
         usleep(FRAME_UPDATE);           // riposa
-    
-        if(seconds == 2 && n && false)
-        {
-            n = false;
-            pthread_mutex_lock(&riverMutex[2]);
-            river[2].crocs[0].x = 1;
-            river[2].crocs[0].y = 16;
-            pthread_mutex_unlock(&riverMutex[2]);
-            pthread_mutex_lock(&riverMutex[1]);
-            river[1].crocs[0].x = 100;
-            river[1].crocs[0].y = 20;
-            river[1].crocs[0].splash = 60;
-            pthread_mutex_unlock(&riverMutex[1]);
-        }
 
     } while(keepPlaying);
 }
@@ -929,13 +915,13 @@ void *riverHandler(void *args)
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
     bool keepGenerating = true;
     newCrocodileScene(river,spawnTimers);
-    short nullCounters[RIVER_ROWS]={0};
+    short nullCounters[RIVER_ROWS] = {0};
     
     do
     {
-        for(short i=0; i<RIVER_ROWS;i++)
+        for(short i=0; i < RIVER_ROWS;i++) 
         {
-            if(spawnTimers[i]==0)
+            if(spawnTimers[i] == 0) // controlla se devono spawnare coccodrilli
             {
                 spawnCrocodile(i,spawns[river[i].direction],computeY(i));
 
@@ -950,7 +936,7 @@ void *riverHandler(void *args)
             }
         }
 
-        for(short i = 0; i < RIVER_ROWS; i++)
+        for(short i = 0; i < RIVER_ROWS; i++) // controlla non ci siano irregolarita'
         {
             short nCroc=0;
             for(short c = 0; c < MAX_CROCODILE_PER_ROW; c++)
@@ -963,7 +949,7 @@ void *riverHandler(void *args)
                 if(nullCounters[i] % 150 == 0)
                 {
                     nullCounters[i] = 0;
-                    spawnCrocodile(i,spawns[river[i].direction],computeY(i));
+                    spawnCrocodile(i, spawns[river[i].direction], computeY(i));
                     if(river[i].direction) // se va a destra
                         spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * river[i].speed;
                     else
@@ -974,7 +960,7 @@ void *riverHandler(void *args)
             }
             else
             {
-                nullCounters[i]=0;
+                nullCounters[i] = 0;
             }
         }
 
@@ -986,7 +972,7 @@ void *riverHandler(void *args)
 void *singleEnemyHandler(void *arg)
 {
     bool nowGenerated = false;
-    short enemyID= *((short*)arg);
+    short enemyID = *((short*)arg);
 
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
@@ -1003,9 +989,9 @@ void *singleEnemyHandler(void *arg)
         myself = allEnemies[enemyID];
         pthread_mutex_unlock(&semAllEnemies);
 
-        if(myself.genTime == 0)
+        if(myself.genTime == 0) // se il nemico ha finito di generarsi
         {
-            if(myself.shot == 0 && nowGenerated == false)
+            if(myself.shot == 0 && nowGenerated == false) // se e' ora di sparare
             {      
                 newBorn.x = myself.x+3; newBorn.y = myself.y+2;
                 newBorn.ID = myself.ID;
@@ -1022,7 +1008,7 @@ void *singleEnemyHandler(void *arg)
                 pthread_mutex_unlock(&semEmenyProjectiles);
 
                 pthread_mutex_lock(&semEnemyProjectilesAlive);
-                enemyProjectilesAlive[newBorn.ID]=true;
+                enemyProjectilesAlive[newBorn.ID] = true;
                 pthread_mutex_unlock(&semEnemyProjectilesAlive);
                 nowGenerated = true;
             }
@@ -1048,7 +1034,7 @@ void *singleEnemyProjectileHandler(void *arg)
 
     do{
         pthread_mutex_lock(&semEmenyProjectiles);
-        if(updates != 0 && updates % enemyProjectiles[id].speed == 0)
+        if(updates != 0 && updates % enemyProjectiles[id].speed == 0) // se deve aggiornarsi
         {
             if(enemyProjectiles[id].y < limit)
             {                
@@ -1056,7 +1042,7 @@ void *singleEnemyProjectileHandler(void *arg)
             }
             else
             {
-                continua=false;
+                continua = false;
             }
         }
         pthread_mutex_unlock(&semEmenyProjectiles);
@@ -1083,14 +1069,14 @@ void *singleCrocodileHandler(void *arg1)
     pthread_mutex_unlock(&riverMutex[myRow]);
 
     do{
-        if(update % myself.speed == 0)
-        {
-            // scarica aggiornamenti
-            pthread_mutex_lock(&riverMutex[myRow]);
-            myself = river[myRow].crocs[myID];
-            pthread_mutex_unlock(&riverMutex[myRow]);
+        // scarica aggiornamenti
+        pthread_mutex_lock(&riverMutex[myRow]);
+        myself = river[myRow].crocs[myID];
+        pthread_mutex_unlock(&riverMutex[myRow]);
 
-            if(myself.x != STOPPED_CROCODILE && myself.y != STOPPED_CROCODILE) // se esisto ancora
+        if(myself.x != STOPPED_CROCODILE && myself.y != STOPPED_CROCODILE) // se esisto ancora
+        {
+            if(update % myself.speed == 0) // se devo muovermi
             {
                 if(myself.direction) // se deve andare a destra
                 {
@@ -1114,18 +1100,18 @@ void *singleCrocodileHandler(void *arg1)
                     }
                     pthread_mutex_unlock(&riverMutex[myRow]);
                 }
-
-                pthread_mutex_lock(&riverMutex[myRow]);
-                if(river[myRow].crocs[myID].splash > 0)
-                    river[myRow].crocs[myID].splash--;
-                if(river[myRow].crocs[myID].splash == 0)
-                {
-                    river[myRow].crocs[myID].x = STOPPED_CROCODILE;
-                    river[myRow].crocs[myID].y = STOPPED_CROCODILE;
-                }
-                pthread_mutex_unlock(&riverMutex[myRow]);
             }
+            pthread_mutex_lock(&riverMutex[myRow]);
+            if(river[myRow].crocs[myID].splash > 0)
+                river[myRow].crocs[myID].splash--;
+            if(river[myRow].crocs[myID].splash == 0)
+            {
+                river[myRow].crocs[myID].x = STOPPED_CROCODILE;
+                river[myRow].crocs[myID].y = STOPPED_CROCODILE;
+            }
+            pthread_mutex_unlock(&riverMutex[myRow]);
         }
+
         update++;
         usleep(FRAME_UPDATE);
     } while (true);
@@ -1157,6 +1143,7 @@ short reverseComputeY(short y)
 
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splashP)
 {
+    randomSeed();
     Crocodile croc;
     croc.x = x;
     croc.y = y;
@@ -1182,7 +1169,7 @@ void randomSeed()
 
     struct timespec CurrentTime;
 
-    clock_gettime(CLOCK_REALTIME, &CurrentTime);
+    clock_gettime(CLOCK_REALTIME, &CurrentTime); // l'IDE potrebbe riportare un errore ma la costante e' inclusa in time.h
 
     srand(time(NULL) % ptid * CurrentTime.tv_nsec);
     // prendiamo il numero di secondi trascorsi dal 1° gennaio 1970, facciamo il modulo per il pid e moltiplichiamo i nanosecondi correnti
@@ -1195,8 +1182,9 @@ short randomNumber(short min, short max)
     return n;
 }
 
-short spawnCrocodile(short lane, short x,short y )
+short spawnCrocodile(short lane, short x, short y )
 {
+    randomSeed();
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
     pthread_mutex_unlock(&semDifficult);
@@ -1219,7 +1207,7 @@ short spawnCrocodile(short lane, short x,short y )
                 if(prob == 0)
                 {
                     short min = ((CROCODILE_COLUMNS) + 5) * river[lane].speed;
-                    short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * river[lane].speed ;
+                    short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * river[lane].speed;
                     river[lane].crocs[i].splash = randomNumber(min, max);
                 }
             }    
@@ -1237,7 +1225,7 @@ void riverSpeeds()
     river[0].speed = (rand() % 2) + rules.speed;
     river[1].speed = (rand() % 2) + rules.speed;
 
-    for(short i = 2; i<RIVER_ROWS;)
+    for(short i = 2; i < RIVER_ROWS;)
     {
         short r = (rand() % 2) + rules.speed;
         if(river[i - 2].speed != river[i - 1].speed)
@@ -1300,7 +1288,7 @@ void resetCrocCord()
     }
 }
 
-void newCrocodileScene(RiverRow rivRow[],short spawnTimers[])
+void newCrocodileScene(volatile RiverRow rivRow[],short spawnTimers[])
 {
     resetCrocCord();
     riverSpeeds();
@@ -1313,13 +1301,13 @@ void newCrocodileScene(RiverRow rivRow[],short spawnTimers[])
             short max = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK;
             short currentX = randomNumber(min, max);
 
-            spawnCrocodile(i,currentX,computeY(i));// Genera il thread di un coccodrillo
+            spawnCrocodile(i,currentX,computeY(i));     // genera il thread di un coccodrillo
 
             short generated = 1;
             do{
-                currentX -= crocodileSpace();  // spazio tra un coccodrillo e l'altro
-                currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
-                spawnCrocodile(i,currentX,computeY(i));// Genera il thread di un coccodrillo
+                currentX -= crocodileSpace();           // spazio tra un coccodrillo e l'altro
+                currentX -= CROCODILE_COLUMNS;          // la x e' la prima colonna
+                spawnCrocodile(i,currentX,computeY(i)); // genera il thread di un coccodrillo
                 generated++;
             }while(currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK && generated < 3);
 
@@ -1331,15 +1319,15 @@ void newCrocodileScene(RiverRow rivRow[],short spawnTimers[])
             short max = COLUMNS_PER_BLOCK * 5;
             short currentX = randomNumber(min, max);
 
-            spawnCrocodile(i,currentX,computeY(i));// Genera il thread di un coccodrillo
+            spawnCrocodile(i,currentX,computeY(i));     // genera il thread di un coccodrillo
 
             short generated = 1;
             do
             {
-                currentX += crocodileSpace(); // spazio tra un coccodrillo e l'altro
-                currentX += CROCODILE_COLUMNS; // la x e' la prima colonna
+                currentX += crocodileSpace();           // spazio tra un coccodrillo e l'altro
+                currentX += CROCODILE_COLUMNS;          // la x e' la prima colonna
 
-                spawnCrocodile(i,currentX,computeY(i));// Genera il thread di un coccodrillo
+                spawnCrocodile(i,currentX,computeY(i)); // genera il thread di un coccodrillo
                 generated++;
             } while (currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK) && generated < 3);
             
@@ -1362,7 +1350,7 @@ void setToFalse(bool array[], short size)
         array[i] = false;
 }
 
-void newEnemiesScene(short rowsY[], Enemy allEnemies[])
+void newEnemiesScene(short rowsY[], volatile Enemy allEnemies[])
 {
     for(short i = 0; i < MAX_ENEMIES;)
     {

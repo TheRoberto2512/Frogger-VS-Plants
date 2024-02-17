@@ -74,9 +74,9 @@ void printScoreMenu(short x, short y);
 void printInterfaceMenu(short x, short y,short z);
 
 
-/***********\
-*  Utilità  *
-\***********/
+/************\
+*  UTILITA'  *
+\************/
 
 void printCursor(short x, short y);
 

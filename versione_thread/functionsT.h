@@ -9,20 +9,35 @@
 \************/
 
 // Numero di microsecondi tra un update e l'altro.
-#define FRAME_UPDATE 33 * 1000
+#define FRAME_UPDATE 27.5 * 1000
 
 // Costanti per stampare a video le coordinate di debug.
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5
 #define DEBUG_TOP 11
 
-#define GENERAL_DEBUG true
-#define FROG_DEBUG true
-#define FROG_PROJECTILES_DEBUG true
-#define RIVER_DEBUG true
-#define ENEMIES_DEBUG true
-#define ENEMIES_PROJECTILES_DEBUG true
-#define COLLISION_DEBUG true
-#define COLLISION_DEBUG_INFO true
+// Costante per attivare/disattivare le stampe di debug.
+#define GENERAL_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate della rana.
+#define FROG_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei proiettili della rana.
+#define FROG_PROJECTILES_DEBUG false
+
+// Costante per attivare/disattivare la stampa del numero di coccodrilli per ogni corsia.
+#define RIVER_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei nemici.
+#define ENEMIES_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle coordinate dei proiettili nemici.
+#define ENEMIES_PROJECTILES_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle collisioni rilevate.
+#define COLLISION_DEBUG false
+
+// Costante per attivare/disattivare la stampa delle informazioni aggiuntive sulle collisioni rilevate.
+#define COLLISION_DEBUG_INFO false
 
 // Costanti per calcolare la distanza tra un coccodrillo e l'altro.
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
@@ -116,7 +131,7 @@ void resetCrocCord();
 short crocodileSpace();
 
 // Funzione per generare una nuova scena (posizioni coccodrilli) all'inizio di una manche.
-void newCrocodileScene(RiverRow rivRow[],short spawnTimers[]);
+void newCrocodileScene(volatile RiverRow rivRow[], short spawnTimers[]);
 
 // Funzione per ottenere il numero della riga in base alla coordinata y dell'entita'.
 short yToRowNumber(short y);
@@ -125,7 +140,7 @@ short yToRowNumber(short y);
 void setToFalse(bool array[], short size);
 
 // Funzione per generare nuove posizioni per tutti i nemici.
-void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
+void newEnemiesScene(short rowsY[], volatile Enemy allEnemies[]);
 
 // Funzione per creare il thread nemico.
 void spawnEnemy(short enemyID);

@@ -9,16 +9,11 @@
 <img src="https://github.com/TheRoberto2512/Frogger-VS-Plants/assets/70667004/95d650bb-6835-4538-9203-caf896b25fbb" width="400" height="400">
 </p>
 
+<p align="center">
+Università degli Studi di Cagliari - Informatica Applicata e Data Analytics [60/79] L-31<br>
+(SC/0077) - Sistemi Operativi e Programmazione di Rete, A.A. 2023/2024</p>
 
-## Repository del progetto "Frogger VS Plants", A.A. 2023/2024
-Università degli Studi di Cagliari - Informatica Applicata e Data Analytics [60/79] L-31
-
-(SC/0077) - Sistemi Operativi e Programmazione di Rete
-
-
-### Contributors:
-
-
-*Roberto A. Usai (60/79/00029)*
-
-*Riccardo Secchi (60/79/00074)*
+<p align="center"><em>
+<strong>Autori:</strong><br>
+Roberto A. Usai (60/79/00029)<br>
+Riccardo Secchi (60/79/00074)</em></p>

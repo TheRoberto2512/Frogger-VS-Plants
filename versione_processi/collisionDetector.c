@@ -9,7 +9,7 @@ bool entityCollisionDetector(short x1, short y1, short top1, short x2, short y2,
 {
     bool collisionDetected = false;
 
-    if(y1 == y2) // in un gioco strutturato a blocchi, l'altezza deve essere la stessa per collidere 
+    if(y1 == y2) // in un gioco strutturato a "blocchi", l'altezza deve essere la stessa per collidere 
     {
         if ( ( ( x1 + (top1-1) ) >= x2 ) && ( x1 < ( x2 + (top2-1) ) ) )
         {

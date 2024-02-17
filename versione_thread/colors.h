@@ -170,43 +170,43 @@ void istanziaColori();
 // Colore di default (utile per i bordi).
 #define DEFAULT 32
 
-// Coppia di colori per i proiettili
+// Coppia di colori per i proiettili.
 #define PROIETTILI 33
 
-// Coppia di colori da richiamare per la scritta del menu (ViolaS, ViolaC)
+// Coppia di colori da richiamare per la scritta del menu (ViolaS, ViolaC).
 #define TITOLOS_E_TITOLOC 34
 
-// Coppia di colori bordo titolo e prato
+// Coppia di colori bordo titolo e prato.
 #define PRATO_E_TITOLO 35
 
-// Coppia di colori fiume e rana
+// Coppia di colori fiume e rana.
 #define FIUME_E_RANA 36
 
-// Coppia di colori Rosa del VS e prato
+// Coppia di colori Rosa del VS e prato.
 #define ROSA_E_PRATO 37
 
-// Coppia di colori Rosa del VS e Azzurro del VS
+// Coppia di colori Rosa del VS e Azzurro del VS.
 #define ROSA_E_AZZURRO 38
 
-// Coppia di colori Celeste del VS e Azzurro del VS
+// Coppia di colori Celeste del VS e Azzurro del VS.
 #define CELESTE_E_AZZURRO 39
 
-// Coppia di colori occhio rana e Celeste del fiume
+// Coppia di colori occhio rana e Celeste del fiume.
 #define EYES_E_CELESTE 40
 
-// Coppia di colori da richiamare per le scritte dell'interfaccia Nero e Bianco
+// Coppia di colori da richiamare per le scritte dell'interfaccia Nero e Bianco.
 #define NERO_E_BIANCO 41
 
-// Coppia di colori da richiamare per le scritte dell'interfaccia Nero e Celeste
+// Coppia di colori da richiamare per le scritte dell'interfaccia Nero e Celeste.
 #define NERO_E_CELESTE 42
 
-// Coppia di colori da richiamare per la scritta easy della difficolta
+// Coppia di colori da richiamare per la scritta easy della difficolta'.
 #define NERO_E_VERDE 43
 
-// Coppia di colori da richiamare per la scritta medium della difficolta
+// Coppia di colori da richiamare per la scritta medium della difficolta'.
 #define NERO_E_GIALLO 44
 
-// Coppia di colori da richiamare per la scritta hard della difficolta
+// Coppia di colori da richiamare per la scritta hard della difficolta'.
 #define NERO_E_ROSSO 45
 
 // Coppie di colori da richiamare per le schermate di debug.
