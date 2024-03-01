@@ -13,6 +13,7 @@
 #include "settings.h"
 #include "collisionDetector.h"
 #include "buffers.h"
+#include "crocList.h"
 
 extern volatile short difficult;                            extern pthread_mutex_t semDifficult;
 extern GameUpdates currentGame;                             extern pthread_mutex_t semCurses;
@@ -108,42 +109,39 @@ void *frogHandler(void *arg) // semCurses, semFrogger, semGenFrogProj
 
 void *mainManager(void *args)
 {
-    bool n = true;
     // GESTIONE DELLA PARTITA CORRENTE
-    currentGame.lives = LIVES; currentGame.score = 0;
+    currentGame.lives = LIVES; currentGame.score = 0; bool keepGenerating = true;
 
     pthread_mutex_lock(&semDifficult);
     GameRules rules = getRules(difficult);
     pthread_mutex_unlock(&semDifficult);   
 
+    // VARIABILI PER LE ENTITA' 
     Frog frogger;
-    frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
-    frogger.y = ROWS_PER_MAP - 1; // y iniziale (ultima riga)
+    frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1;    // x iniziale (centro mappa)
+    frogger.y = ROWS_PER_MAP - 1;                                   // y iniziale (ultima riga)
 
-    Projectile proiettiliRana[MAX_FROG_PROJ];
-    bool doFrogProjectileExist[MAX_FROG_PROJ];
-    setToFalse(doFrogProjectileExist, MAX_FROG_PROJ);
+    CrocList cList;
 
-    Crocodile collidedCroc; collidedCroc.PTID = 0;   // per salvare il coccodrillo su cui la rana sale
+    for(short i = 0; i < RIVER_ROWS; i++)           
+    {
+        cList.lanes[i] = NULL;                      // evita SIGSEGV impostando i puntatori a NULL
+        cList.counts[i] = 0;                        // ci assicuriamo che siano tutti settati a zero
+    } 
+
+    Crocodile collidedCroc; collidedCroc.PTID = 0;                  // per salvare il coccodrillo su cui la rana sale
     short xDiff; short oldFrogX; short xFDiff;
-
-    bool printEnemies[MAX_ENEMIES];                 // FLAG per decidere se stampare o no i nemici
-    Enemy AllEnemies[MAX_ENEMIES]; 
-    setToFalse(printEnemies, MAX_ENEMIES);
-
-    bool printAllEnemyProjectiles[MAX_ENEMIES];   
-    Projectile AllProjectilesEnemies[MAX_ENEMIES];
 
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
 
-    short fps = 0, seconds = 0;                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
-    short DebugLine = 0;                            // per la stampa delle schermate aggiuntive di debug
-    short minRow = ROWS_PER_MAP - 1;                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
+    short fps = 0, seconds = 0;                                     // per gestire il numero di aggiornamenti (fps) e di secondi passati (seconds)
+    short DebugLine = 0;                                            // per la stampa delle schermate aggiuntive di debug
+    short minRow = ROWS_PER_MAP - 1;                                // salva la riga piu' alta raggiunta dalla rana per attribuire i punti
 
-    short yDanger = -1;                             // coordinata dove verra' stampato il segnale d'allerta
-    short dirDanger = -1;                           // direzione dove verra' stampato il segnale d'allerta
-    bool printDanger = false;                       // FLAG per gestire la stampa del segnale d'allerta
+    short yDanger = -1;                                             // coordinata dove verra' stampato il segnale d'allerta
+    short dirDanger = -1;                                           // direzione dove verra' stampato il segnale d'allerta
+    bool printDanger = false;                                       // FLAG per gestire la stampa del segnale d'allerta
 
     bool emptyLilyPads[5] = {true, true, true, true, true};
     double r = BLOCK_PER_MAP_ROWS / 5;
@@ -156,6 +154,18 @@ void *mainManager(void *args)
         lilyPadsX[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
     }
 
+    // PRE-PARTITA
+    short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
+    short directions[RIVER_ROWS];                                                               // salva le direzioni delle corsie
+    short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
+    short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};   // inizializzati a valori altissimi
+    randomSeed();
+
+    directions[0] = rand() % 2; // puo' essere 0 o 1
+    newCrocodileScene(speeds, directions, spawnTimers, &rules);
+
+
+    // INIZIO PARTITA
     do{
         if(fps < 5 && seconds == 0) // evita casi di schermo che non si aggiorna 
         {
@@ -164,9 +174,9 @@ void *mainManager(void *args)
 
         // INIZIO STAMPE
         pthread_mutex_lock(&semCurses);
-        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);              // stampa i bordi
+        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);             // stampa i bordi
         printScoreBoard(currentGame.lives, currentGame.score, (rules.time - seconds), FULL_TIME);  // aggiorna la scoreboard
-        printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                   // stampa la mappa                                                                         // stampa i coccodrilli
+        printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                  // stampa la mappa
         pthread_mutex_unlock(&semCurses);
 
         // LETTURE
@@ -180,6 +190,9 @@ void *mainManager(void *args)
                     case 'F':
                         frogger = mainBuffer.data[i].value.frogger;
                         break;
+                    case 'C':
+                        Crocodile croc = mainBuffer.data[i].value.croc;
+                        Update(&cList, reverseComputeY(croc.y), croc, fps);
 
                 } 
                 sem_post(&mainBuffer.sem_free_space);
@@ -188,6 +201,11 @@ void *mainManager(void *args)
         }
         pthread_mutex_unlock(&mainBuffer.mutex);
 
+        DeleteUnnecessary(&cList, fps);
+        pthread_mutex_lock(&semCurses);
+        printList(&cList);
+        pthread_mutex_unlock(&semCurses);
+
         pthread_mutex_lock(&semCurses);
         printFrog(frogger.x, frogger.y);
         pthread_mutex_unlock(&semCurses);
@@ -195,7 +213,31 @@ void *mainManager(void *args)
         // SCHERMATE DI DEBUG
         if(GENERAL_DEBUG)
         {
-            
+            DebugLine = 0;
+            if(FROG_DEBUG)                                      
+            {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 3, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "FROGGER");
+                mvprintw(DebugLine+1, DEBUG_COLUMNS, "%03d : %03d", frogger.x, frogger.y);
+                pthread_mutex_unlock(&semCurses);
+                DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
+            }
+            if(RIVER_DEBUG)
+            {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, RIVER_ROWS+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+2, "RIVER");
+                for(short r = 0; r < RIVER_ROWS; r++)
+                {
+                    if(cList.counts[r] == 0)
+                        CHANGE_COLOR(RED_DEBUG);
+                    mvprintw(DebugLine+1+r, DEBUG_COLUMNS, " [%d] : %-2d", r, cList.counts[r]);
+                    CHANGE_COLOR(DEFAULT);
+                }
+                pthread_mutex_unlock(&semCurses);
+                DebugLine += 2 + (RIVER_ROWS) + 1;
+            }
         }  
 
         // GENERA NUOVI NEMICI DOPO LA LORO MORTE
@@ -205,6 +247,21 @@ void *mainManager(void *args)
             {
 
             }
+        }
+
+        // GENERA NUOVI COCCODRILLI
+        for(short i = 0; i < RIVER_ROWS && keepGenerating; i++)
+        {
+            if(spawnTimers[i] <= 0)
+            {
+                spawnCrocodile(buildCrocodile(spawns[directions[i]], computeY(i), directions[i], speeds[i], rules.BadCrocodile));
+                if(directions[i]) // se va a destra
+                    spawnTimers[i] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[i];
+                else
+                    spawnTimers[i] = (crocodileSpace() + CROCODILE_COLUMNS) * speeds[i]; 
+            }
+            else
+                spawnTimers[i]--;
         }
 
         // SE IL TEMPO E' SCADUTO
@@ -244,7 +301,61 @@ void *singleEnemyProjectileHandler(void *arg)
 
 void *singleCrocodileHandler(void *arg1)
 {
-    
+    bool keepGoing = true; int aliveTime = 1;
+    Crocodile me = *((Crocodile *) arg1);
+    me.PTID = pthread_self();
+
+    sem_wait(&mainBuffer.sem_free_space);
+    pthread_mutex_lock(&mainBuffer.mutex);
+    if(mainBuffer.index < BUFFER_SIZE)
+    {
+        mainBuffer.data[mainBuffer.index].type = 'C';
+        mainBuffer.data[mainBuffer.index].value.croc = me;
+        mainBuffer.index++;
+    }
+    pthread_mutex_unlock(&mainBuffer.mutex);
+    aliveTime++;
+    usleep(FRAME_UPDATE);
+
+    do{
+        if(aliveTime % me.speed == 0) // se deve aggiornarsi
+        {
+            if(me.direction) // se e' 1 va a destra
+            {
+                me.x++;
+                if(me.x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
+                    keepGoing = false;
+            }
+            else // se e' 0 va a sinistra
+            {
+                me.x--;
+                if(me.x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
+                    keepGoing = false;
+            }
+        }
+        if(me.splash != GOOD_CROC_FLAG)
+        {
+            me.splash--;
+            if(me.splash == 0)
+            {
+                keepGoing = false;
+            }
+        }
+        sem_wait(&mainBuffer.sem_free_space);
+        pthread_mutex_lock(&mainBuffer.mutex);
+        if(mainBuffer.index < BUFFER_SIZE)
+        {
+            mainBuffer.data[mainBuffer.index].type = 'C';
+            mainBuffer.data[mainBuffer.index].value.croc = me;
+            mainBuffer.index++;
+        }
+        pthread_mutex_unlock(&mainBuffer.mutex);
+
+        aliveTime++;
+        usleep(FRAME_UPDATE);
+    } while(keepGoing);
+
+    // ...
 }
 
 
@@ -311,34 +422,38 @@ short randomNumber(short min, short max)
     return n;
 }
 
-short spawnCrocodile(short lane, short x, short y )
+void spawnCrocodile(Crocodile croc)
 {
+    static Crocodile lastFive[5];
+    static short lastOne = 0;
+    lastFive[lastOne] = croc;
     
+    pthread_t PTID;
+    pthread_create(&PTID, NULL, singleCrocodileHandler, (void*)&lastFive[lastOne]);
+
+    lastOne++;
+    if(lastOne == 5)
+        lastOne = 0;
 }
 
-void riverSpeeds()
+void riverSpeeds(short speeds[], short rulesSpeed)
 {
-    /*
-    pthread_mutex_lock(&semDifficult);
-    GameRules rules = getRules(difficult);
-    pthread_mutex_unlock(&semDifficult);
-    river[0].speed = (rand() % 2) + rules.speed;
-    river[1].speed = (rand() % 2) + rules.speed;
-
+    speeds[0] = (rand() % 2) + rulesSpeed;
+    speeds[1] = (rand() % 2) + rulesSpeed;
     for(short i = 2; i < RIVER_ROWS;)
     {
-        short r = (rand() % 2) + rules.speed;
-        if(river[i - 2].speed != river[i - 1].speed)
+        short r = (rand() % 2) + rulesSpeed;
+        if(speeds[i - 2] != speeds[i - 1])
         {
-            river[i].speed = r;
+            speeds[i] = r;
             i++;
         }
-        else if(r != river[i-1].speed)
+        else if(r != speeds[i - 1])
         {
-            river[i].speed = r;
+            speeds[i] = r;
             i++;
-        } 
-    } */
+        }      
+    }
 }
 
 void riversDirections()
@@ -360,6 +475,61 @@ short crocodileSpace()
     short min = (short) CROC_SPACE_MIN;
     short max = (short) CROC_SPACE_MAX;
     return randomNumber(min, max);
+}
+
+void newCrocodileScene(short speeds[], short directions[], short spawnTimers[], GameRules *rules)
+{
+    riverSpeeds(speeds, rules->speed);
+    for(short i = 1; i < RIVER_ROWS; i++)
+    {
+        if(directions[i-1]) // se e' 1
+            directions[i] = 0;
+        else
+            directions[i] = 1;
+    }
+    
+    for(int i = 0; i < RIVER_ROWS; i++)
+    {
+        if(directions[i]) // se la direzione e' destra
+        { 
+            short min = COLUMNS_PER_MAP - (COLUMNS_PER_BLOCK * 5);
+            short max = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK;
+            short currentX = randomNumber(min, max);
+            
+            spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+
+            short generated = 1;
+
+            do{
+                currentX -= crocodileSpace(); // spazio tra un coccodrillo e l'altro
+                currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
+                spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+                generated++;
+            } while( currentX - CROCODILE_COLUMNS > COLUMNS_PER_BLOCK && generated <= 3 );
+
+            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - currentX) * speeds[i];
+        }
+        else // se la direzione e' sinistra
+        {   
+            short min = COLUMNS_PER_BLOCK;
+            short max = COLUMNS_PER_BLOCK * 5;
+            short currentX = randomNumber(min, max);
+            
+            spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+            short generated = 1;
+
+            do{
+                currentX += crocodileSpace(); // spazio tra un coccodrillo e l'altro
+                currentX += CROCODILE_COLUMNS; // la x e' la prima colonna
+                spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile));
+                generated++;
+            } while( currentX + CROCODILE_COLUMNS > (COLUMNS_PER_MAP - COLUMNS_PER_BLOCK) && generated <= 3 );
+
+            currentX += CROCODILE_COLUMNS;
+
+            spawnTimers[i] = ((CROCODILE_COLUMNS + crocodileSpace()) - (COLUMNS_PER_MAP - currentX)) * speeds[i];
+        }
+    }
 }
 
 short yToRowNumber(short y)

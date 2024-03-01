@@ -6,7 +6,7 @@
 #ifndef BUFFER_GUARD
 #define BUFFER_GUARD
 
-# define BUFFER_SIZE 40
+# define BUFFER_SIZE 35
 
 typedef union data
 {

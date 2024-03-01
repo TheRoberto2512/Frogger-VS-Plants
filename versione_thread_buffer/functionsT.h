@@ -16,28 +16,28 @@
 #define DEBUG_TOP 11
 
 // Costante per attivare/disattivare le stampe di debug.
-#define GENERAL_DEBUG false
+#define GENERAL_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle coordinate della rana.
-#define FROG_DEBUG false
+#define FROG_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle coordinate dei proiettili della rana.
-#define FROG_PROJECTILES_DEBUG false
+#define FROG_PROJECTILES_DEBUG true
 
 // Costante per attivare/disattivare la stampa del numero di coccodrilli per ogni corsia.
-#define RIVER_DEBUG false
+#define RIVER_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle coordinate dei nemici.
-#define ENEMIES_DEBUG false
+#define ENEMIES_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle coordinate dei proiettili nemici.
-#define ENEMIES_PROJECTILES_DEBUG false
+#define ENEMIES_PROJECTILES_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle collisioni rilevate.
-#define COLLISION_DEBUG false
+#define COLLISION_DEBUG true
 
 // Costante per attivare/disattivare la stampa delle informazioni aggiuntive sulle collisioni rilevate.
-#define COLLISION_DEBUG_INFO false
+#define COLLISION_DEBUG_INFO true
 
 // Costanti per calcolare la distanza tra un coccodrillo e l'altro.
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
@@ -107,10 +107,10 @@ short reverseComputeY(short n);
 Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash);
 
 // Funzione per creare il thread coccodrillo.
-short spawnCrocodile(short lane, short x,short y );
+void spawnCrocodile(Crocodile croc);
 
 // Funzione per regolare la velocita' delle righe del fiume.
-void riverSpeeds();
+void riverSpeeds(short speeds[], short rulesSpeed);
 
 // Funzione per regolare la direzione delle righe del fiume.
 void riversDirections();
@@ -125,7 +125,7 @@ void resetCrocCord();
 short crocodileSpace();
 
 // Funzione per generare una nuova scena (posizioni coccodrilli) all'inizio di una manche.
-void newCrocodileScene();
+void newCrocodileScene(short speeds[], short directions[], short spawnTimers[], GameRules *rules);
 
 // Funzione per ottenere il numero della riga in base alla coordinata y dell'entita'.
 short yToRowNumber(short y);
