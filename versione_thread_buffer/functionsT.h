@@ -71,6 +71,9 @@
 // Thread che gestisce la rana.
 void *frogHandler();
 
+// Thread che gestisce un singolo proiettile nemico.
+void *singleFrogProjectileHandler(void *arg);
+
 // Thread che verifica le collisioni e stampa l'interfaccia.
 void *mainManager();
 
@@ -134,7 +137,7 @@ short yToRowNumber(short y);
 void setToFalse(bool array[], short size);
 
 // Funzione per generare nuove posizioni per tutti i nemici.
-void newEnemiesScene(short rowsY[], volatile Enemy allEnemies[]);
+void newEnemiesScene(short rowsY[], Enemy allEnemies[]);
 
 // Funzione per creare il thread nemico.
 void spawnEnemy(short enemyID);

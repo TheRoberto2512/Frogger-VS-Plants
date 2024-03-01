@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <curses.h>
 
 #ifndef FROG_GUARD
 #define FROG_GUARD
@@ -40,6 +41,7 @@ typedef struct enemy
 typedef struct projectile
 {
     pthread_t PTID;     // threadID del processo nemico
+    bool fromFrog;      // per capire se e' della rana o di un nemico
     short ID;           // identificatore 
     short x;            // coordinata x
     short y;            // coordinata y

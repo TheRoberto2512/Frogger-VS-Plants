@@ -29,7 +29,7 @@ short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000
 *  FUNZIONI THREAD  *
 \********************/
 
-void *frogHandler(void *arg) // semCurses, semFrogger, semGenFrogProj
+void *frogHandler(void *arg)
 {
     Frog frogger;
     frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
@@ -107,6 +107,11 @@ void *frogHandler(void *arg) // semCurses, semFrogger, semGenFrogProj
     } while (true);
 }
 
+void *singleFrogProjectileHandler(void *arg)
+{
+    
+}
+
 void *mainManager(void *args)
 {
     // GESTIONE DELLA PARTITA CORRENTE
@@ -154,7 +159,7 @@ void *mainManager(void *args)
         lilyPadsX[i] = COLUMNS_PER_BLOCK * (1 + (i * r));
     }
 
-    // PRE-PARTITA
+    // PRE-PARTITA: Coccodrilli
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
     short directions[RIVER_ROWS];                                                               // salva le direzioni delle corsie
     short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
@@ -164,6 +169,33 @@ void *mainManager(void *args)
     directions[0] = rand() % 2; // puo' essere 0 o 1
     newCrocodileScene(speeds, directions, spawnTimers, &rules);
 
+    // PRE-PARTITA: Nemici
+    Enemy allEnemies[MAX_ENEMIES];          // salva tutti i nemici correnti
+    bool aliveEnemies[MAX_ENEMIES];         // true quando il nemico corrispondente e' vivo
+    pthread_t A;
+    short rowsY[RIVERSIDE_ROWS];            // salva le coordinate Y delle righe
+
+    rowsY[0] = (LILY_PADS_ROWS * ROWS_PER_BLOCK) + SCOREBOARD_ROWS;
+    for(short r = 1; r < RIVERSIDE_ROWS; r++)
+    {   
+        rowsY[r] = rowsY[r-1] + ROWS_PER_BLOCK;
+    }
+
+    newEnemiesScene(rowsY, allEnemies);
+    for(short i = 0; i < MAX_ENEMIES; i++)
+    {
+        pthread_create(&A, NULL, singleEnemyHandler, (void*)&allEnemies[i]);
+        aliveEnemies[i] = true;
+    }
+
+    // PRE-PARTITA: Proiettili
+    Projectile enemyProjectiles[MAX_ENEMIES];
+    bool printEnemyProjectiles[MAX_ENEMIES];
+    Projectile frogProjectiles[MAX_FROG_PROJ];
+    bool printFrogProjectiles[MAX_FROG_PROJ];
+
+    setToFalse(printEnemyProjectiles, MAX_ENEMIES);
+    setToFalse(printFrogProjectiles, MAX_FROG_PROJ);
 
     // INIZIO PARTITA
     do{
@@ -190,9 +222,29 @@ void *mainManager(void *args)
                     case 'F':
                         frogger = mainBuffer.data[i].value.frogger;
                         break;
+
                     case 'C':
                         Crocodile croc = mainBuffer.data[i].value.croc;
                         Update(&cList, reverseComputeY(croc.y), croc, fps);
+                        break;
+                    
+                    case 'E':
+                        Enemy en = mainBuffer.data[i].value.enemy;
+                        allEnemies[en.ID] = en;
+                        break;
+
+                    case 'P':
+                        Projectile proj = mainBuffer.data[i].value.proj;
+                        if(proj.fromFrog)
+                        {
+
+                        }
+                        else
+                        {
+                            enemyProjectiles[proj.ID] = proj;
+                            printEnemyProjectiles[proj.ID] = true;
+                        }
+                        break;
 
                 } 
                 sem_post(&mainBuffer.sem_free_space);
@@ -205,6 +257,31 @@ void *mainManager(void *args)
         pthread_mutex_lock(&semCurses);
         printList(&cList);
         pthread_mutex_unlock(&semCurses);
+
+        // STAMPA TUTTI I NEMICI E RELATIVI PROIETTILI
+        for(short e = 0; e < MAX_ENEMIES; e++)
+        {   
+            if(aliveEnemies[e])
+            {
+                pthread_mutex_lock(&semCurses);
+                printEnemy(allEnemies[e].x, allEnemies[e].y, allEnemies[e].genTime);
+                pthread_mutex_unlock(&semCurses);
+            }
+            if(printEnemyProjectiles[e])
+            {
+                if(enemyProjectiles[e].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK - 1))
+                {
+                    easyKill(enemyProjectiles[e].PTID);
+                    printEnemyProjectiles[e] = false;
+                }
+                else
+                {
+                    pthread_mutex_lock(&semCurses);
+                    printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
+                    pthread_mutex_unlock(&semCurses);
+                }
+            }   
+        }
 
         pthread_mutex_lock(&semCurses);
         printFrog(frogger.x, frogger.y);
@@ -237,6 +314,29 @@ void *mainManager(void *args)
                 }
                 pthread_mutex_unlock(&semCurses);
                 DebugLine += 2 + (RIVER_ROWS) + 1;
+            }
+            if(ENEMIES_DEBUG)
+            {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "ENEMIES");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    mvprintw(DebugLine+s+1, DEBUG_COLUMNS, "%03d : %03d", allEnemies[s].x, allEnemies[s].y); 
+                pthread_mutex_unlock(&semCurses); 
+                DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
+            }
+            if(ENEMIES_PROJECTILES_DEBUG)
+            {
+                pthread_mutex_lock(&semCurses);
+                customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
+                mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
+                for(short s = 0; s < MAX_ENEMIES; s++)
+                    if(printEnemyProjectiles[s])
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemyProjectiles[s].x, enemyProjectiles[s].y);
+                    else
+                        mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
+                pthread_mutex_unlock(&semCurses);
+                DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
             }
         }  
 
@@ -291,12 +391,96 @@ void *mainManager(void *args)
 
 void *singleEnemyHandler(void *arg)
 {
-    
+    pthread_mutex_lock(&semDifficult);
+    GameRules rules = getRules(difficult);
+    pthread_mutex_unlock(&semDifficult); 
+
+    Enemy myself = *((Enemy*)arg);
+
+    myself.PTID = pthread_self();
+
+    randomSeed();
+
+    short speed = rules.speed;
+    bool newBorn = true;
+
+    do {
+        if(myself.genTime == 0)
+        {
+            if(newBorn)
+            {
+                newBorn = false;
+                sem_wait(&mainBuffer.sem_free_space);
+                pthread_mutex_lock(&mainBuffer.mutex);
+                if(mainBuffer.index < BUFFER_SIZE)
+                {
+                    mainBuffer.data[mainBuffer.index].type = 'E';
+                    mainBuffer.data[mainBuffer.index].value.enemy = myself;
+                    mainBuffer.index++;
+                }
+                pthread_mutex_unlock(&mainBuffer.mutex);
+            }
+            if(myself.shot == 0)
+            {
+                static Projectile proj;
+                static pthread_t AAA;
+                proj.ID = myself.ID;
+                proj.speed = speed; proj.fromFrog = false;
+                proj.x = myself.x+3; proj.y = myself.y+2;
+
+                pthread_create(&AAA, NULL, singleEnemyProjectileHandler, (void*)&proj);
+
+                myself.shot = randomNumber(30 * 4, 30 * 8);
+            }
+            else
+            {
+                myself.shot--;
+            }
+        }
+        else
+        {
+            myself.genTime--;
+        }
+
+        usleep(FRAME_UPDATE);
+    } while (true);
 }
 
 void *singleEnemyProjectileHandler(void *arg)
 {
-    
+    Projectile myself = *((Projectile*)arg);
+
+    myself.PTID = pthread_self();
+
+    short limit = ROWS_PER_MAP + ROWS_PER_BLOCK - 1; // 1 per il bordo inferiore
+    short updates = 0;
+
+    do{
+        if(updates != 0 && updates % myself.speed == 0)
+        {
+            if(myself.y < limit)
+            {
+                myself.y++;
+                sem_wait(&mainBuffer.sem_free_space);
+                pthread_mutex_lock(&mainBuffer.mutex);
+                if(mainBuffer.index < BUFFER_SIZE)
+                {
+                    mainBuffer.data[mainBuffer.index].type = 'P';
+                    mainBuffer.data[mainBuffer.index].value.proj = myself;
+                    mainBuffer.index++;
+                }
+                pthread_mutex_unlock(&mainBuffer.mutex);
+            }
+            else
+            {
+                break;
+            }
+        }
+        updates++;
+        usleep(FRAME_UPDATE);
+    } while (true);
+
+    pthread_exit(NULL);
 }
 
 void *singleCrocodileHandler(void *arg1)
@@ -543,7 +727,7 @@ void setToFalse(bool array[], short size)
         array[i] = false;
 }
 
-void newEnemiesScene(short rowsY[], volatile Enemy allEnemies[])
+void newEnemiesScene(short rowsY[], Enemy allEnemies[])
 {
     for(short i = 0; i < MAX_ENEMIES;)
     {
