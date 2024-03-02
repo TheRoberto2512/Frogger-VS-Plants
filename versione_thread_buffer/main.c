@@ -17,6 +17,9 @@
 
 volatile short difficult;                               pthread_mutex_t semDifficult;
 volatile GameUpdates currentGame;                       pthread_mutex_t semCurses;
+volatile bool frogProj[MAX_FROG_PROJ];                  pthread_mutex_t semFrogProj;
+volatile bool frogAtStart;                              pthread_mutex_t semFrogger;
+
 Buffer mainBuffer;
 
 bool setStartingVariables();
@@ -52,13 +55,18 @@ bool setStartingVariables()
     pthread_mutex_init(&semCurses, NULL);
     // ======================================================================================
 
-    GameRules rules = getRules(difficult);
-
     // PER IL BUFFER ========================================================================
     pthread_mutex_init(&mainBuffer.mutex, NULL);
     sem_init(&mainBuffer.sem_free_space, false, BUFFER_SIZE);
     // ======================================================================================
 
+    // PER LA RANA ==========================================================================
+    pthread_mutex_init(&semFrogProj, NULL);
+    pthread_mutex_init(&semFrogger, NULL);
+    frogAtStart = false;
+
+    for(short r = 0; r < MAX_FROG_PROJ; r++)
+        frogProj[r] = false;
 }
 
 bool game()

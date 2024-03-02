@@ -2,14 +2,11 @@ CFLAGS = -g -c
 LIBS = -lncursesw
 # si usa -lncursesw invece di -lncurses perche' si vogliono usare i caratteri UNICODE
 
-all: main.c colors.o sprite.o functionsT.o settings.o collisionDetector.o menu.o crocList.o
-	gcc -g main.c sprite.o colors.o functionsT.o settings.o collisionDetector.o crocList.o menu.o $(LIBS) -lpthread -o game 
+all: main.c colors.o sprite.o functionsT.o settings.o collisionDetector.o menu.o 
+	gcc -g main.c sprite.o colors.o functionsT.o settings.o collisionDetector.o menu.o $(LIBS) -lpthread -o game 
 
 functionsT.o: functionsT.c functionsT.h settings.o sprite.o structs.h collisionDetector.o buffers.h
 	gcc $(CFLAGS) functionsT.c functionsT.h buffers.h -lpthread 
-
-crocList.o: crocList.c crocList.h sprite.o structs.h
-	gcc $(CFLAGS) crocList.c
 
 collisionDetector.o: collisionDetector.c collisionDetector.h sprite.o
 	gcc $(CFLAGS) collisionDetector.c $(LIBS)
