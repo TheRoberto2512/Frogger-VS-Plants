@@ -43,6 +43,9 @@
 #define CROC_SPACE_MIN (COLUMNS_PER_BLOCK * 2)
 #define CROC_SPACE_MAX (COLUMNS_PER_BLOCK * 4)
 
+// Costante per definire il numero massimo di coccodrilli per riga.
+#define MAX_CROCS 3
+
 
 /*****************\
 *  COSTANTI FLAG  *
@@ -107,16 +110,13 @@ short computeY(short n);
 short reverseComputeY(short n);
 
 // Funzione per assemblare facilmente una variabile Crocodile.
-Crocodile buildCrocodile(short x, short y, short direction, short speed, short splash);
+Crocodile buildCrocodile(short x, short y, short direction, short speed, short splashP, short row, short ID);
 
 // Funzione per creare il thread coccodrillo.
 void spawnCrocodile(Crocodile croc);
 
 // Funzione per regolare la velocita' delle righe del fiume.
 void riverSpeeds(short speeds[], short rulesSpeed);
-
-// Funzione per regolare la direzione delle righe del fiume.
-void riversDirections();
 
 // Funzione per impostare la velocità coccodrili pari alla loro corsia.
 void setCrocSpeeds();

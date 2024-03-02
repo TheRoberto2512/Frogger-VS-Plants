@@ -15,6 +15,8 @@ typedef struct frog
 typedef struct crocodile
 {
     pthread_t PTID;     // per identificare il coccodrillo
+    short row;          // riga del coccodrillo (array)
+    short ID;           // posizione del coccodrillo (array)
     short x;            // coordinata x
     short y;            // coordinata y
     short direction;    // direzione

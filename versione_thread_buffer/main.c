@@ -22,6 +22,8 @@ volatile bool frogAtStart;                              pthread_mutex_t semFrogg
 
 Buffer mainBuffer;
 
+short WhatShouldIDo[RIVER_ROWS][MAX_CROCS];             pthread_mutex_t crocActions;
+
 bool setStartingVariables();
 bool game();
 
@@ -59,6 +61,8 @@ bool setStartingVariables()
     pthread_mutex_init(&mainBuffer.mutex, NULL);
     sem_init(&mainBuffer.sem_free_space, false, BUFFER_SIZE);
     // ======================================================================================
+
+    pthread_mutex_init(&crocActions, NULL);
 
     // PER LA RANA ==========================================================================
     pthread_mutex_init(&semFrogProj, NULL);
