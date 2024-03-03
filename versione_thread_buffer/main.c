@@ -17,12 +17,16 @@
 
 volatile short difficult;                               pthread_mutex_t semDifficult;
 volatile GameUpdates currentGame;                       pthread_mutex_t semCurses;
-volatile bool frogProj[MAX_FROG_PROJ];                  pthread_mutex_t semFrogProj;
+
 volatile bool frogAtStart;                              pthread_mutex_t semFrogger;
 
 Buffer mainBuffer;
 
 short WhatShouldIDo[RIVER_ROWS][MAX_CROCS];             pthread_mutex_t crocActions;
+short EnemiesActions[MAX_ENEMIES];                      pthread_mutex_t enemiesActions;
+
+short frogProjectilesActions[MAX_FROG_PROJ];            pthread_mutex_t semFrogProjActions;
+short enemyProjectilesActions[MAX_ENEMIES];             pthread_mutex_t semEnProjActions;
 
 bool setStartingVariables();
 bool game();
@@ -62,15 +66,20 @@ bool setStartingVariables()
     sem_init(&mainBuffer.sem_free_space, false, BUFFER_SIZE);
     // ======================================================================================
 
+    // PER I COCCODRILLI ====================================================================
     pthread_mutex_init(&crocActions, NULL);
+    // ======================================================================================
+
+    // PER I NEMICI =========================================================================
+    pthread_mutex_init(&enemiesActions, NULL);
+    pthread_mutex_init(&semEnProjActions, NULL);
+    // ======================================================================================
 
     // PER LA RANA ==========================================================================
-    pthread_mutex_init(&semFrogProj, NULL);
     pthread_mutex_init(&semFrogger, NULL);
+    pthread_mutex_init(&semFrogProjActions, NULL);
     frogAtStart = false;
-
-    for(short r = 0; r < MAX_FROG_PROJ; r++)
-        frogProj[r] = false;
+    // ======================================================================================
 }
 
 bool game()

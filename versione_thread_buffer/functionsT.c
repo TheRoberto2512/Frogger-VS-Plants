@@ -20,15 +20,28 @@ extern GameUpdates currentGame;                             extern pthread_mutex
 extern Buffer mainBuffer;
 
 extern volatile bool frogAtStart;                           extern pthread_mutex_t semFrogger;
-extern volatile bool frogProj[MAX_FROG_PROJ];               extern pthread_mutex_t semFrogProj;
 
 short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};
 
 extern short WhatShouldIDo[RIVER_ROWS][MAX_CROCS];          extern pthread_mutex_t crocActions;
-// 0 se il coccodrillo esiste
-// 1 se deve killarsi da solo
-// 2 se deve diventare buono
-// -1 dopo che si e' killato (bisogna fare il pthread_join)
+// -5   vuoto
+// 0    se il coccodrillo esiste
+// 1    se deve killarsi da solo
+// 2    se deve diventare buono
+// -1   dopo che si e' killato (bisogna fare il pthread_join)
+
+extern short EnemiesActions[MAX_ENEMIES];                   extern pthread_mutex_t enemiesActions;
+// -5   vuoto
+// 0    in esecuzione
+// 1    se deve killarsi
+// -1   si e' killato
+
+extern short frogProjectilesActions[MAX_FROG_PROJ];         extern pthread_mutex_t semFrogProjActions;
+extern short enemyProjectilesActions[MAX_ENEMIES];          extern pthread_mutex_t semEnProjActions;
+// -5   vuoto
+// 0    in esecuzion
+// 1    deve killarsi
+// -1   si e' killato
 
 /********************\
 *  FUNZIONI THREAD  *
@@ -125,10 +138,10 @@ void *frogHandler(void *arg)
                     case ' ': // generazione di un proietile
                         if(rules.enemies)
                         {
-                            pthread_mutex_lock(&semFrogProj);
+                            pthread_mutex_lock(&semFrogProjActions);
                             for(short p = 0; p < MAX_FROG_PROJ; p++)
                             {
-                                if(frogProj[p] == false)
+                                if(frogProjectilesActions[p] == EMPTY)
                                 {
                                     static Projectile newBorn;
                                     newBorn.ID = p;
@@ -138,11 +151,10 @@ void *frogHandler(void *arg)
                                     newBorn.fromFrog = true;
                                     pthread_t A;
                                     pthread_create(&A, NULL, singleFrogProjectileHandler, (void*)&newBorn);
-                                    frogProj[p] = true;
                                     break;
                                 }
                             }
-                            pthread_mutex_unlock(&semFrogProj);
+                            pthread_mutex_unlock(&semFrogProjActions);
                         }
                         break;
                 }
@@ -171,10 +183,21 @@ void *singleFrogProjectileHandler(void *arg)
 
     myself.PTID = pthread_self();
 
+    pthread_mutex_lock(&semFrogProjActions);
+    frogProjectilesActions[myself.ID] = ALIVE;
+    pthread_mutex_unlock(&semFrogProjActions);
+
     short updates = 0;
 
     do{
-        if(updates != 0 && updates % myself.speed == 0)
+        if(frogProjectilesActions[myself.ID] == MUST_KILL)
+        {
+            pthread_mutex_lock(&semFrogProjActions);            
+            frogProjectilesActions[myself.ID] = KILLED;
+            pthread_mutex_unlock(&semFrogProjActions);
+            pthread_exit(NULL);
+        }
+        if(updates != 0 && updates % myself.speed == ALIVE)
         {
             if(myself.y >= 3)
             {
@@ -191,7 +214,10 @@ void *singleFrogProjectileHandler(void *arg)
             }
             else
             {
-                break;
+                pthread_mutex_lock(&semFrogProjActions);
+                frogProjectilesActions[myself.ID] = KILLED;
+                pthread_mutex_unlock(&semFrogProjActions);
+                pthread_exit(NULL);
             }
         }
         updates++;
@@ -242,14 +268,12 @@ void *mainManager(void *args)
 
     // PRE-PARTITA: Coccodrilli
     Crocodile allCrocs[RIVER_ROWS][MAX_CROCS];
-    bool aliveCrocs[RIVER_ROWS][MAX_CROCS];
 
     for(short r = 0; r < RIVER_ROWS; r++)
     {
         for(short c = 0; c < MAX_CROCS; c++)
         {
-            aliveCrocs[r][c] = false;
-            WhatShouldIDo[r][c]  = 0;
+            WhatShouldIDo[r][c] = EMPTY;
         }
     }
 
@@ -265,7 +289,6 @@ void *mainManager(void *args)
 
     // PRE-PARTITA: Nemici
     Enemy allEnemies[MAX_ENEMIES];          // salva tutti i nemici correnti
-    bool aliveEnemies[MAX_ENEMIES];         // true quando il nemico corrispondente e' vivo
     pthread_t A;
     short rowsY[RIVERSIDE_ROWS];            // salva le coordinate Y delle righe
 
@@ -277,22 +300,22 @@ void *mainManager(void *args)
             rowsY[r] = rowsY[r-1] + ROWS_PER_BLOCK;
         }
 
-        newEnemiesScene(rowsY, allEnemies);
-        for(short i = 0; i < MAX_ENEMIES; i++)
+        for(short r = 0; r < MAX_ENEMIES; r++)
         {
-            aliveEnemies[i] = true;
+            EnemiesActions[r] = EMPTY;
+            enemyProjectilesActions[r] = EMPTY;
         }
-    }
 
+        newEnemiesScene(rowsY, allEnemies);
+    }
 
     // PRE-PARTITA: Proiettili
     Projectile enemyProjectiles[MAX_ENEMIES];
-    bool printEnemyProjectiles[MAX_ENEMIES];
     Projectile frogProjectiles[MAX_FROG_PROJ];
-    bool printFrogProjectiles[MAX_FROG_PROJ];
-
-    setToFalse(printEnemyProjectiles, MAX_ENEMIES);
-    setToFalse(printFrogProjectiles, MAX_FROG_PROJ);
+    for(short r = 0; r < MAX_FROG_PROJ; r++)
+    {
+        frogProjectilesActions[r] = EMPTY;
+    }
 
     // INIZIO PARTITA
     do{
@@ -323,30 +346,19 @@ void *mainManager(void *args)
                     case 'C':
                         Crocodile croc = mainBuffer.data[i].value.croc;
                         allCrocs[croc.row][croc.ID] = croc;
-                        aliveCrocs[croc.row][croc.ID] = true;
                         break;
                     
                     case 'E':
                         Enemy en = mainBuffer.data[i].value.enemy;
                         allEnemies[en.ID] = en;
-                        aliveEnemies[en.ID] = true;
                         break;
 
                     case 'P':
                         Projectile proj = mainBuffer.data[i].value.proj;
                         if(proj.fromFrog)
-                        {
-                            pthread_mutex_lock(&semFrogProj);
-                            frogProj[proj.ID] = true;
-                            pthread_mutex_unlock(&semFrogProj);
                             frogProjectiles[proj.ID] = proj;
-                            printFrogProjectiles[proj.ID] = true;
-                        }
                         else
-                        {
                             enemyProjectiles[proj.ID] = proj;
-                            printEnemyProjectiles[proj.ID] = true;
-                        }
                         break;
 
                 } 
@@ -360,7 +372,7 @@ void *mainManager(void *args)
         bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
         for(short f = 0; f < MAX_ENEMIES && !frogEnPrjsCollided; f++)    
         {
-            if(printEnemyProjectiles[f])
+            if(enemyProjectilesActions[f] == ALIVE)
             {
                 frogEnPrjsCollided = frogEnemyProjCD(frogger.x, frogger.y, enemyProjectiles[f].x, enemyProjectiles[f].y);
                 if(frogEnPrjsCollided && !GODMODE)
@@ -377,7 +389,7 @@ void *mainManager(void *args)
         bool frogPrjsCrocodileCollided = false;                 // proiettile rana - coccodrillo
         for(short fr = 0; fr < MAX_FROG_PROJ; fr++)
         {
-            if(printFrogProjectiles[fr]) // se il proiettile esiste
+            if(frogProjectilesActions[fr] == ALIVE) // se il proiettile esiste
             {
                 short ROW = yToRowNumber(frogProjectiles[fr].y); // calcolo la sua riga
 
@@ -386,56 +398,65 @@ void *mainManager(void *args)
                     // controlliamo la collisione tra i proiettili rana e i nemici solo se l'altezza dei proiettili rientra nelle righe oltre il fiume
                     for(short e = 0; e < MAX_ENEMIES && !frogPrjsEnemiesCollided; e++)
                     {
-                        if(allEnemies[e].genTime == 0 && aliveEnemies[e]) // se il nemico e' gia' stato completamente generato
+                        if(allEnemies[e].genTime == 0 && EnemiesActions[e] == ALIVE) // se il nemico e' gia' stato completamente generato
                         {
                             frogPrjsEnemiesCollided = enemyFrogProjCD(allEnemies[e].x, allEnemies[e].y, frogProjectiles[fr].x, frogProjectiles[fr].y);
                             if(frogPrjsEnemiesCollided)
                             {
                                 currentGame.score = currentGame.score + ENEMY_KILLED;                 // aggiungiamo i punti
 
-                                pthread_mutex_lock(&mainBuffer.mutex);
-                                easyKill(allEnemies[e].PTID); 
-                                pthread_mutex_unlock(&mainBuffer.mutex);
+                                pthread_mutex_lock(&enemiesActions);
+                                EnemiesActions[e] = MUST_KILL;
+                                pthread_mutex_unlock(&enemiesActions);         
 
-                                aliveEnemies[e] = false;
-                                            
-                                pthread_mutex_lock(&mainBuffer.mutex);
-                                easyKill(frogProjectiles[fr].PTID);
-                                pthread_mutex_unlock(&mainBuffer.mutex);            
-                                printFrogProjectiles[fr] = false;
-
-                                pthread_mutex_lock(&semFrogProj);         
-                                frogProj[fr] = false;                      
-                                pthread_mutex_unlock(&semFrogProj);
+                                pthread_mutex_lock(&semFrogProjActions);         
+                                frogProjectilesActions[fr] = MUST_KILL;                     
+                                pthread_mutex_unlock(&semFrogProjActions);
                             }
                         }
                     }
 
                 } else if(ROW > RIVERSIDE_ROWS && ROW <= (RIVERSIDE_ROWS+RIVER_ROWS))
                 {
+                    ROW = ROW - (RIVERSIDE_ROWS + 1);           // calcoliamo la riga del fiume corrispondente
 
+                    for(short c = 0; c < MAX_ENEMIES && !frogPrjsEnemiesCollided; c++)
+                    {
+                        if(WhatShouldIDo[ROW][c] == ALIVE)
+                        {
+                            frogPrjsCrocodileCollided = crocFrogProjCD(allCrocs[ROW][c].x, allCrocs[ROW][c].y, frogProjectiles[fr].x, frogProjectiles[fr].y);
+                            if(frogPrjsCrocodileCollided) // se c'e' stata una collisione
+                            {
+                                pthread_mutex_lock(&semFrogProjActions);         
+                                frogProjectilesActions[fr] = MUST_KILL;                     
+                                pthread_mutex_unlock(&semFrogProjActions);   
+
+                                if(allCrocs[ROW][c].splash != GOOD_CROC_FLAG) // se e' cattivo
+                                {
+                                    pthread_mutex_lock(&crocActions);
+                                    WhatShouldIDo[ROW][c] = TURN_GOOD;
+                                    pthread_mutex_unlock(&crocActions);
+                                } 
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 for(short en = 0; en < MAX_ENEMIES && !twoProjectilesCollided; en++)             
                 {
-                    if(printEnemyProjectiles[en])
+                    if(enemyProjectilesActions[en] == ALIVE)
                     {
                         twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogProjectiles[fr].x, frogProjectiles[fr].y, enemyProjectiles[en].x, enemyProjectiles[en].y);
                         if(twoProjectilesCollided)
                         {
-                            pthread_mutex_lock(&mainBuffer.mutex);
-                            easyKill(frogProjectiles[fr].PTID);
-                            pthread_mutex_unlock(&mainBuffer.mutex);            
-                            printFrogProjectiles[fr] = false; 
+                            pthread_mutex_lock(&semFrogProjActions);         
+                            frogProjectilesActions[fr] = MUST_KILL;                     
+                            pthread_mutex_unlock(&semFrogProjActions); 
 
-                            pthread_mutex_lock(&semFrogProj);         
-                            frogProj[fr] = false;                      
-                            pthread_mutex_unlock(&semFrogProj);
-
-                            pthread_mutex_lock(&mainBuffer.mutex);
-                            easyKill(enemyProjectiles[en].PTID);
-                            pthread_mutex_unlock(&mainBuffer.mutex);
-                            printEnemyProjectiles[en] = false;
+                            pthread_mutex_lock(&semEnProjActions);         
+                            enemyProjectilesActions[en] = MUST_KILL;                     
+                            pthread_mutex_unlock(&semEnProjActions); 
                         }
                     }
                 }
@@ -482,12 +503,16 @@ void *mainManager(void *args)
                     }
                 }
             }
+            if(!froggerEnteredLilypads && !GODMODE)
+            {
+                currentGame.lives = currentGame.lives - 1; endManche = true;
+            }
         }
         else if(frogRow >= 1 && frogRow <= RIVERSIDE_ROWS) // se la rana e' all'altezza dell'argine superiore
         {
             for(short e = 0; e < MAX_ENEMIES && !frogEnemyCollided; e++)          
             {
-                if(allEnemies[e].genTime == 0 && aliveEnemies[e]) 
+                if(allEnemies[e].genTime == 0 && EnemiesActions[e] == ALIVE) 
                 {
                     frogEnemyCollided = frogEnemyCD(frogger.x, frogger.y, allEnemies[e].x, allEnemies[e].y);
                 }
@@ -499,7 +524,7 @@ void *mainManager(void *args)
         }
         else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
         {
-
+            
         }
 
         // STAMPA TUTTI I COCCODRILLI
@@ -507,97 +532,99 @@ void *mainManager(void *args)
         {
             for(short c = 0; c < MAX_CROCS; c++)
             {
-                if(aliveCrocs[r][c])
+                if(WhatShouldIDo[r][c] == ALIVE)
                 {
-                    bool stillAlive = true;
-
-                    if(allCrocs[r][c].direction) // se e' 1 va a destra
+                    if(allCrocs[r][c].splash == GOOD_CROC_FLAG)
                     {
-                        if(allCrocs[r][c].x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
-                            stillAlive = false;
+                        pthread_mutex_lock(&semCurses);
+                        printCrocodile(allCrocs[r][c].x, allCrocs[r][c].y, allCrocs[r][c].direction);
+                        pthread_mutex_unlock(&semCurses);
                     }
-                    else // se e' 0 va a sinistra
+                    else if(allCrocs[r][c].splash > 0)
                     {
-                        if(allCrocs[r][c].x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
-                            stillAlive = false;
+                        pthread_mutex_lock(&semCurses);
+                        printBadCrocodile(allCrocs[r][c].x, allCrocs[r][c].y, allCrocs[r][c].direction);
+                        pthread_mutex_unlock(&semCurses);
                     }
-
-                    if(stillAlive)
-                    {
-                        if(allCrocs[r][c].splash == GOOD_CROC_FLAG)
-                        {
-                            printCrocodile(allCrocs[r][c].x, allCrocs[r][c].y, allCrocs[r][c].direction);
-                        }
-                        else
-                        {
-                            if(allCrocs[r][c].splash <= 0)
-                            {
-                                aliveCrocs[r][c] = false;
-                                pthread_mutex_lock(&mainBuffer.mutex);
-                                easyKill(allCrocs[r][c].PTID);
-                                pthread_mutex_unlock(&mainBuffer.mutex);
-                            }
-                            else
-                                printBadCrocodile(allCrocs[r][c].x, allCrocs[r][c].y, allCrocs[r][c].direction);
-                        }
-                    }
-
                 }
+            }
+        }
+
+        for(short r = 0; r < RIVER_ROWS; r++)
+        {
+            for(short c = 0; c < MAX_CROCS; c++)
+            {
+                if(WhatShouldIDo[r][c] == KILLED)
+                {
+                    WhatShouldIDo[r][c] = EMPTY;
+                }
+            }
+        }
+
+        for(short r = 0; r < RIVER_ROWS; r++)
+        {
+            if(spawnTimers[r] <= 0)
+            {
+                for(short c = 0; c < MAX_CROCS; c++)
+                {
+                    if(WhatShouldIDo[r][c] == EMPTY) // se e' libero
+                    {
+                        spawnCrocodile(buildCrocodile(spawns[directions[r]], computeY(r), directions[r], speeds[r], rules.BadCrocodile, r, c));
+
+                        if(directions[r]) // se va a destra
+                            spawnTimers[r] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[r];
+                        else
+                            spawnTimers[r] = (crocodileSpace() + CROCODILE_COLUMNS) * speeds[r]; 
+
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                spawnTimers[r]--;
             }
         }
 
         // STAMPA TUTTI I NEMICI E RELATIVI PROIETTILI
         for(short e = 0; e < MAX_ENEMIES; e++)
         {   
-            if(aliveEnemies[e])
+            if(EnemiesActions[e] == ALIVE)
             {
                 pthread_mutex_lock(&semCurses);
                 printEnemy(allEnemies[e].x, allEnemies[e].y, allEnemies[e].genTime);
                 pthread_mutex_unlock(&semCurses);
             }
-            if(printEnemyProjectiles[e])
+            else if(EnemiesActions[e] == KILLED)
             {
-                if(enemyProjectiles[e].y >= (ROWS_PER_MAP + ROWS_PER_BLOCK - 1))
-                {
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    easyKill(enemyProjectiles[e].PTID);
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                    printEnemyProjectiles[e] = false;
-                }
-                else
-                {
-                    pthread_mutex_lock(&semCurses);
-                    printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
-                    pthread_mutex_unlock(&semCurses);
-                }
+                EnemiesActions[e] = EMPTY;
+            }
+            if(enemyProjectilesActions[e] == ALIVE)
+            {
+                pthread_mutex_lock(&semCurses);
+                printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
+                pthread_mutex_unlock(&semCurses);
+            }
+            else if(enemyProjectilesActions[e] == KILLED)
+            {
+                enemyProjectilesActions[e] = EMPTY;
             }   
         }
 
-        pthread_mutex_lock(&semCurses);
-        printFrog(frogger.x, frogger.y);
-        pthread_mutex_unlock(&semCurses);
+        pthread_mutex_lock(&semCurses); printFrog(frogger.x, frogger.y); pthread_mutex_unlock(&semCurses);
 
         // STAMPA I PROIETTILI DELLA RANA
         for(short p = 0; p < MAX_FROG_PROJ; p++)
         {
-            if(printFrogProjectiles[p])
+            if(frogProjectilesActions[p] == ALIVE)
             {
-                if(frogProjectiles[p].y < 3)
-                {
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    easyKill(frogProjectiles[p].PTID);
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                    printFrogProjectiles[p] = false;
-                    pthread_mutex_lock(&semFrogProj);
-                    frogProj[p] = false;
-                    pthread_mutex_unlock(&semFrogProj);
-                }
-                else
-                {
-                    pthread_mutex_lock(&semCurses);
-                    printProjectile(frogProjectiles[p].x, frogProjectiles[p].y, true);
-                    pthread_mutex_unlock(&semCurses);
-                }
+                pthread_mutex_lock(&semCurses);
+                printProjectile(frogProjectiles[p].x, frogProjectiles[p].y, true);
+                pthread_mutex_unlock(&semCurses);
+            }
+            else if(frogProjectilesActions[p] == KILLED)
+            {
+                frogProjectilesActions[p] = EMPTY;
             }
         }
 
@@ -620,7 +647,7 @@ void *mainManager(void *args)
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 2+MAX_FROG_PROJ, false);
                 mvprintw(DebugLine, DEBUG_COLUMNS+1, "FR-PROJ");
                 for(short s = 0; s < MAX_FROG_PROJ; s++)
-                    if(printFrogProjectiles[s])
+                    if(frogProjectilesActions[s] == ALIVE)
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", frogProjectiles[s].x, frogProjectiles[s].y);
                     else
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
@@ -638,7 +665,7 @@ void *mainManager(void *args)
                     short nCroc = 0;
                     for(short c = 0; c < MAX_CROCS; c++)
                     {
-                        if(aliveCrocs[r][c])
+                        if(WhatShouldIDo[r][c] == ALIVE)
                             nCroc++;
                     }
                     if(nCroc <= 0)
@@ -665,7 +692,7 @@ void *mainManager(void *args)
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
                 mvprintw(DebugLine, DEBUG_COLUMNS+1, "EN-PROJ");
                 for(short s = 0; s < MAX_ENEMIES; s++)
-                    if(printEnemyProjectiles[s])
+                    if(enemyProjectilesActions[s] == ALIVE)
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "%03d : %03d", enemyProjectiles[s].x, enemyProjectiles[s].y);
                     else
                         mvprintw(DebugLine+1+s, DEBUG_COLUMNS, "  false  ");
@@ -754,7 +781,7 @@ void *mainManager(void *args)
         {
             for(short e = 0; e < MAX_ENEMIES; e++)
             {
-                if(aliveEnemies[e] == false)
+                if(EnemiesActions[e] == EMPTY)
                 {
                     bool collided = false;
                     do{
@@ -777,7 +804,6 @@ void *mainManager(void *args)
 
                     pthread_t A;
                     pthread_create(&A, NULL, singleEnemyHandler, (void*)&allEnemies[e]);
-                    aliveEnemies[e] = true;
                     break;
                 }
             }
@@ -813,42 +839,74 @@ void *mainManager(void *args)
             // NEMICI E PROIETTILI
             for(short en = 0; en < MAX_ENEMIES; en++)
             {
-                if(aliveEnemies[en])
+                if(EnemiesActions[en] == ALIVE)
                 {
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    easyKill(allEnemies[en].PTID); 
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                    aliveEnemies[en] = false;
+                    pthread_mutex_lock(&enemiesActions);
+                    EnemiesActions[en] = MUST_KILL;
+                    pthread_mutex_unlock(&enemiesActions);
                 }
-                if(printEnemyProjectiles[en])
+                if(enemyProjectilesActions[en] == ALIVE)
                 {
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    easyKill(enemyProjectiles[en].PTID);
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                    printEnemyProjectiles[en] = false;
+                    pthread_mutex_lock(&semEnProjActions);
+                    enemyProjectilesActions[en] = MUST_KILL;
+                    pthread_mutex_unlock(&semEnProjActions);
                 }
             }
 
             // COCCODRILLI
-            pthread_mutex_lock(&mainBuffer.mutex);
+
             for(short r = 0; r < RIVER_ROWS; r++)
             {
                 for(short c = 0; c < MAX_CROCS; c++)
                 {
-                    if(aliveCrocs[r][c])
+                    if(WhatShouldIDo[r][c] == ALIVE || WhatShouldIDo[r][c] == TURN_GOOD)
                     {
-                        WhatShouldIDo[r][c] = 1;
-                        aliveCrocs[r][c] = false;
+                        WhatShouldIDo[r][c] = MUST_KILL;
                     }
                 }
+                spawnTimers[r] = 32000;
             }
-            pthread_mutex_unlock(&mainBuffer.mutex);
+
+            usleep(FRAME_UPDATE);
+
+            bool cleaned = true;
+            do {
+                cleaned = true;  
+                for(short r = 0; r < RIVER_ROWS; r++)
+                {
+                    for(short c = 0; c < MAX_CROCS; c++)
+                    {
+                        if(WhatShouldIDo[r][c] == KILLED)
+                        {
+                            WhatShouldIDo[r][c] = EMPTY;
+                        }
+                        if(WhatShouldIDo[r][c] == ALIVE)
+                        {
+                            WhatShouldIDo[r][c] = MUST_KILL;
+                        }
+                        if(WhatShouldIDo[r][c] != EMPTY)
+                        {
+                            cleaned = false;
+                        }
+                    }
+                }
+            } while (!cleaned);
             
-            newEnemiesScene(rowsY, allEnemies);
-            for(short i = 0; i < MAX_ENEMIES; i++)
+            /*
+            for(short r = 0; r < RIVER_ROWS; r++)
             {
-                aliveEnemies[i] = true;
-            }
+                for(short c = 0; c < MAX_CROCS; c++)
+                {
+                    char s[30]; short v = WhatShouldIDo[r][c];
+                    sprintf(s, "[%d][%d]: %d", r, c, v);
+                    logChat(s);
+                }
+            } */
+
+            newCrocodileScene(speeds, directions, spawnTimers, &rules);
+
+            // RESPAWN NEMICI
+            newEnemiesScene(rowsY, allEnemies);
         }
 
         // UPDATE SCHERMO E TEMPO
@@ -872,6 +930,17 @@ void *singleEnemyHandler(void *arg)
 
     myself.PTID = pthread_self();
 
+    if(EnemiesActions[myself.ID] == EMPTY)
+    {
+        pthread_mutex_lock(&enemiesActions);
+        EnemiesActions[myself.ID] = ALIVE;
+        pthread_mutex_unlock(&enemiesActions);
+    }
+    else
+    {
+        pthread_exit(NULL);
+    }
+
     randomSeed();
 
     short speed = rules.speed;
@@ -880,6 +949,15 @@ void *singleEnemyHandler(void *arg)
     do {
         if(myself.genTime == 0)
         {
+            switch(EnemiesActions[myself.ID])
+            {
+                case MUST_KILL:
+                    pthread_mutex_lock(&enemiesActions);
+                    EnemiesActions[myself.ID] = KILLED;
+                    pthread_mutex_unlock(&enemiesActions);
+                    pthread_exit(NULL);
+                    break;
+            }
             if(newBorn)
             {
                 newBorn = false;
@@ -925,10 +1003,28 @@ void *singleEnemyProjectileHandler(void *arg)
 
     myself.PTID = pthread_self();
 
+    if(enemyProjectilesActions[myself.ID] == EMPTY)
+    {
+        pthread_mutex_lock(&semEnProjActions);
+        enemyProjectilesActions[myself.ID] = ALIVE;
+        pthread_mutex_unlock(&semEnProjActions);
+    }
+    else
+    {
+        pthread_exit(NULL);
+    }
+
     short limit = ROWS_PER_MAP + ROWS_PER_BLOCK - 1; // 1 per il bordo inferiore
     short updates = 0;
 
     do{
+        if(enemyProjectilesActions[myself.ID] == MUST_KILL)
+        {
+            pthread_mutex_lock(&semEnProjActions);
+            enemyProjectilesActions[myself.ID] = KILLED;
+            pthread_mutex_unlock(&semEnProjActions);
+            pthread_exit(NULL);
+        }
         if(updates != 0 && updates % myself.speed == 0)
         {
             if(myself.y < limit)
@@ -946,7 +1042,10 @@ void *singleEnemyProjectileHandler(void *arg)
             }
             else
             {
-                break;
+                pthread_mutex_lock(&semEnProjActions);
+                enemyProjectilesActions[myself.ID] = KILLED;
+                pthread_mutex_unlock(&semEnProjActions);
+                pthread_exit(NULL);
             }
         }
         updates++;
@@ -958,9 +1057,18 @@ void *singleEnemyProjectileHandler(void *arg)
 
 void *singleCrocodileHandler(void *arg1)
 {
-    bool keepGoing = true; int aliveTime = 1;
+    int aliveTime = 1;
     Crocodile me = *((Crocodile *) arg1);
     me.PTID = pthread_self();
+
+    if(WhatShouldIDo[me.row][me.ID] != EMPTY)
+    {
+        pthread_exit(NULL);
+    }
+
+    pthread_mutex_lock(&crocActions);
+    WhatShouldIDo[me.row][me.ID] = ALIVE;
+    pthread_mutex_unlock(&crocActions);
 
     sem_wait(&mainBuffer.sem_free_space);
     pthread_mutex_lock(&mainBuffer.mutex);
@@ -981,13 +1089,39 @@ void *singleCrocodileHandler(void *arg1)
             {
                 me.x++;
                 if(me.x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
-                    keepGoing = false;
+                {
+                    pthread_mutex_lock(&crocActions);
+                    WhatShouldIDo[me.row][me.ID] = MUST_KILL;
+                    pthread_mutex_unlock(&crocActions);
+                    sem_wait(&mainBuffer.sem_free_space);
+                    pthread_mutex_lock(&mainBuffer.mutex);
+                    if(mainBuffer.index < BUFFER_SIZE)
+                    {
+                        mainBuffer.data[mainBuffer.index].type = 'C';
+                        mainBuffer.data[mainBuffer.index].value.croc = me;
+                        mainBuffer.index++;
+                    }
+                    pthread_mutex_unlock(&mainBuffer.mutex);
+                }
             }
             else // se e' 0 va a sinistra
             {
                 me.x--;
                 if(me.x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
-                    keepGoing = false;
+                {
+                    pthread_mutex_lock(&crocActions);
+                    WhatShouldIDo[me.row][me.ID] = MUST_KILL;
+                    pthread_mutex_unlock(&crocActions);
+                    sem_wait(&mainBuffer.sem_free_space);
+                    pthread_mutex_lock(&mainBuffer.mutex);
+                    if(mainBuffer.index < BUFFER_SIZE)
+                    {
+                        mainBuffer.data[mainBuffer.index].type = 'C';
+                        mainBuffer.data[mainBuffer.index].value.croc = me;
+                        mainBuffer.index++;
+                    }
+                    pthread_mutex_unlock(&mainBuffer.mutex);
+                }
             }
         }
         if(me.splash != GOOD_CROC_FLAG)
@@ -995,12 +1129,24 @@ void *singleCrocodileHandler(void *arg1)
             me.splash--;
             if(me.splash == 0)
             {
-                keepGoing = false;
+                sem_wait(&mainBuffer.sem_free_space);
+                pthread_mutex_lock(&mainBuffer.mutex);
+                if(mainBuffer.index < BUFFER_SIZE)
+                {
+                    mainBuffer.data[mainBuffer.index].type = 'C';
+                    mainBuffer.data[mainBuffer.index].value.croc = me;
+                    mainBuffer.index++;
+                }
+                pthread_mutex_unlock(&mainBuffer.mutex);
+                pthread_mutex_lock(&crocActions);
+                WhatShouldIDo[me.row][me.ID] = MUST_KILL;
+                pthread_mutex_unlock(&crocActions);
             }
         }
+        pthread_mutex_lock(&crocActions);
         switch(WhatShouldIDo[me.row][me.ID])
         {
-            case 0:
+            case ALIVE:
                 sem_wait(&mainBuffer.sem_free_space);
                 pthread_mutex_lock(&mainBuffer.mutex);
                 if(mainBuffer.index < BUFFER_SIZE)
@@ -1012,15 +1158,17 @@ void *singleCrocodileHandler(void *arg1)
                 pthread_mutex_unlock(&mainBuffer.mutex);
                 break;
 
-            case 1:
-                WhatShouldIDo[me.row][me.ID] = -1;
+            case MUST_KILL:
+                WhatShouldIDo[me.row][me.ID] = KILLED;
+                pthread_mutex_unlock(&crocActions);
                 pthread_exit(NULL);
                 break;
 
-            case 2:
+            case TURN_GOOD:
                 if(me.splash != GOOD_CROC_FLAG)
                 {
-                    me.splash != GOOD_CROC_FLAG;
+                    me.splash = GOOD_CROC_FLAG;
+                    WhatShouldIDo[me.row][me.ID] = ALIVE;
                 }
                 sem_wait(&mainBuffer.sem_free_space);
                 pthread_mutex_lock(&mainBuffer.mutex);
@@ -1033,10 +1181,10 @@ void *singleCrocodileHandler(void *arg1)
                 pthread_mutex_unlock(&mainBuffer.mutex);
                 break;
         }
-
+        pthread_mutex_unlock(&crocActions);
         aliveTime++;
         usleep(FRAME_UPDATE);
-    } while(keepGoing);
+    } while(true);
 
     // ...
 }
@@ -1045,12 +1193,6 @@ void *singleCrocodileHandler(void *arg1)
 /*********************\
 *  FUNZIONI UTILITA'  *
 \*********************/
-
-void easyKill(pthread_t PTID)
-{
-    pthread_cancel(PTID);
-    pthread_join(PTID, NULL);
-}
 
 short computeY(short n)
 {
@@ -1158,7 +1300,7 @@ void newCrocodileScene(short speeds[], short directions[], short spawnTimers[], 
         else
             directions[i] = 1;
     }
-    
+
     for(int i = 0; i < RIVER_ROWS; i++)
     {
         if(directions[i]) // se la direzione e' destra
@@ -1168,9 +1310,10 @@ void newCrocodileScene(short speeds[], short directions[], short spawnTimers[], 
             short currentX = randomNumber(min, max);
             
             short generated = 0;
-            spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile, i, generated));
-            generated++;            
 
+            spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile, i, generated));
+            generated++;   
+     
             do{
                 currentX -= crocodileSpace(); // spazio tra un coccodrillo e l'altro
                 currentX -= CROCODILE_COLUMNS; // la x e' la prima colonna
@@ -1187,6 +1330,7 @@ void newCrocodileScene(short speeds[], short directions[], short spawnTimers[], 
             short currentX = randomNumber(min, max);
             
             short generated = 0;
+
             spawnCrocodile(buildCrocodile(currentX, computeY(i), directions[i], speeds[i], rules->BadCrocodile, i, generated));
             generated++;
 
@@ -1241,7 +1385,6 @@ void newEnemiesScene(short rowsY[], Enemy allEnemies[])
         pthread_t A;
         pthread_create(&A, NULL, singleEnemyHandler, (void*)&allEnemies[i]);
     }
-
 }
 
 void logChat(char *msg)

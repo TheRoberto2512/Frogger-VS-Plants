@@ -54,17 +54,11 @@
 // FLAG per identificare un coccodrillo come "buono".
 #define GOOD_CROC_FLAG -10
 
-// FLAG per indicare l'apocalisse dei coccodrilli.
-#define CROCS_APOCALYPSE -12589
-
-// FLAG per mettere in pausa la generazione di coccodrilli.
-#define CROC_STOP -15000
-
-// FLAG per richiedere una generazione istantanea di un coccodrillo.
-#define CROC_NOW -13427
-
-// FLAG per comunicare all'enemiesHandler di rigenerare tutti i nemici.
-#define NEW_ENEMIES_FLAG -5000
+#define ALIVE 0
+#define MUST_KILL 1
+#define KILLED -1
+#define EMPTY -5
+#define TURN_GOOD 2
  
 
 /********************\
@@ -99,9 +93,6 @@ void randomSeed();
 
 // Funzione per generare un numero random tra min e max (inclusi).
 short randomNumber(short min, short max);
-
-// Funzione per killare correttamente un thread.
-void easyKill(pthread_t PTID);
 
 // Funzione per calcolare la Y di un coccodrillo in base al numero della corsia (0-7).
 short computeY(short n);
