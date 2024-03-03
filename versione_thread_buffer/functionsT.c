@@ -253,9 +253,7 @@ void *mainManager(void *args)
     for(short r = 0; r < RIVER_ROWS; r++)
     {
         for(short c = 0; c < MAX_CROCS; c++)
-        {
             WhatShouldIDo[r][c] = EMPTY;
-        }
     }
 
     short spawns[2] = {COLUMNS_PER_MAP, 1-CROCODILE_COLUMNS};
@@ -354,8 +352,7 @@ void *mainManager(void *args)
 
         if(frogger.y < minRow)
         {
-            minRow = frogger.y;
-            currentGame.score += ROW_UP;
+            minRow = frogger.y; currentGame.score += ROW_UP;
         }  
 
         // COLLISIONI
@@ -874,6 +871,7 @@ void *mainManager(void *args)
             }
         }  
 
+        // SEGNALE DI PERICOLO
         if(printDanger)
         {
             pthread_mutex_lock(&semCurses);
@@ -913,8 +911,6 @@ void *mainManager(void *args)
                 }
             }
         }
-
-
 
         // SE IL TEMPO E' SCADUTO
         if((rules.time-seconds) <= -1 && !GODMODE)

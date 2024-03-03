@@ -16,7 +16,7 @@
 #define DEBUG_TOP 11
 
 // Costante per attivare/disattivare le stampe di debug.
-#define GENERAL_DEBUG true
+#define GENERAL_DEBUG false
 
 // Costante per attivare/disattivare la stampa delle coordinate della rana.
 #define FROG_DEBUG true
@@ -54,6 +54,7 @@
 // FLAG per identificare un coccodrillo come "buono".
 #define GOOD_CROC_FLAG -10
 
+// FLAG per gestire i threads.
 #define ALIVE 0
 #define MUST_KILL 1
 #define KILLED -1
