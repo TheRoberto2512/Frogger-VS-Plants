@@ -18,7 +18,7 @@
 volatile short difficult;                               pthread_mutex_t semDifficult;
 volatile GameUpdates currentGame;                       pthread_mutex_t semCurses;
 
-volatile bool frogAtStart;                              pthread_mutex_t semFrogger;
+volatile Frog Frogger;                                  pthread_mutex_t semFrogger;
 
 Buffer mainBuffer;
 
@@ -78,7 +78,8 @@ bool setStartingVariables()
     // PER LA RANA ==========================================================================
     pthread_mutex_init(&semFrogger, NULL);
     pthread_mutex_init(&semFrogProjActions, NULL);
-    frogAtStart = false;
+    Frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
+    Frogger.y = ROWS_PER_MAP - 1; // y iniziale (ultima riga)
     // ======================================================================================
 }
 
@@ -93,7 +94,7 @@ bool game()
     pthread_t tFrog;
     bool playAgain = false; bool continua = true;
 
-    difficult = MEDIUM; //Menu();
+    difficult = Menu();
     
     if(difficult != -1) // se non e' stato scelto exit
     {

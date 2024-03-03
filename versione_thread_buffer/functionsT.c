@@ -19,7 +19,7 @@ extern GameUpdates currentGame;                             extern pthread_mutex
 
 extern Buffer mainBuffer;
 
-extern volatile bool frogAtStart;                           extern pthread_mutex_t semFrogger;
+extern volatile Frog Frogger;                               extern pthread_mutex_t semFrogger;
 
 short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};
 
@@ -43,6 +43,7 @@ extern short enemyProjectilesActions[MAX_ENEMIES];          extern pthread_mutex
 // 1    deve killarsi
 // -1   si e' killato
 
+
 /********************\
 *  FUNZIONI THREAD  *
 \********************/
@@ -62,116 +63,95 @@ void *frogHandler(void *arg)
         update = false;
         
         pthread_mutex_lock(&semFrogger);
-        fStart = frogAtStart;
+        frogger = Frogger;
         pthread_mutex_unlock(&semFrogger);
 
-        if(fStart == true)
+        pthread_mutex_lock(&semCurses); ch = getch(); pthread_mutex_unlock(&semCurses);
+        if(ch != ERR && ch != KEY_MOUSE) // se c'e' stato un input non proveniente dal mouse
         {
-            pthread_mutex_lock(&semFrogger);
-            frogAtStart = false;
-            pthread_mutex_unlock(&semFrogger);
-
-            frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
-            frogger.y = ROWS_PER_MAP - 1; // y iniziale (ultima riga)
-
-            sem_wait(&mainBuffer.sem_free_space);
-            pthread_mutex_lock(&mainBuffer.mutex);
-            if(mainBuffer.index < BUFFER_SIZE)
+            switch(ch) //qui dentro modifichiamo x e y
             {
-                mainBuffer.data[mainBuffer.index].type = 'F';
-                mainBuffer.data[mainBuffer.index].value.frogger = frogger;
-                mainBuffer.index++;
-            }
-            pthread_mutex_unlock(&mainBuffer.mutex);
-        }
-        else
-        {
-            pthread_mutex_lock(&semCurses); ch = getch(); pthread_mutex_unlock(&semCurses);
-            if(ch != ERR && ch != KEY_MOUSE) // se c'e' stato un input non proveniente dal mouse
-            {
-                switch(ch) //qui dentro modifichiamo x e y
-                {
-                    case 'd':
-                    case 'D':
-                    case KEY_RIGHT:
-                        update = true;
-                        frogger.x += COLUMNS_PER_BLOCK;
-                        if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
-                        {
-                            frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
-                        }
-                        break;
-
-                    case 'a':
-                    case 'A':
-                    case KEY_LEFT:
-                        update = true;
-                        frogger.x -= COLUMNS_PER_BLOCK;
-                        if (frogger.x < 1)
-                        {
-                            frogger.x = 1;
-                        }
-                        break;
-
-                    case 'w':
-                    case 'W':
-                    case KEY_UP:
-                        update = true;
-                        frogger.y -= ROWS_PER_BLOCK;
-                        if(frogger.y < SCOREBOARD_ROWS)
-                        {
-                            frogger.y = SCOREBOARD_ROWS;
-                        }
-                        break;
-
-                    case 's':
-                    case 'S':
-                    case KEY_DOWN:
-                        update = true;
-                        frogger.y += ROWS_PER_BLOCK;
-                        if (frogger.y > (ROWS_PER_MAP - 3))
-                        {
-                            frogger.y = ROWS_PER_MAP - 1;
-                        }
-                        break;
-
-                    case ' ': // generazione di un proietile
-                        if(rules.enemies)
-                        {
-                            pthread_mutex_lock(&semFrogProjActions);
-                            for(short p = 0; p < MAX_FROG_PROJ; p++)
-                            {
-                                if(frogProjectilesActions[p] == EMPTY)
-                                {
-                                    static Projectile newBorn;
-                                    newBorn.ID = p;
-                                    newBorn.x = frogger.x + 3;
-                                    newBorn.y = frogger.y - 1;
-                                    newBorn.speed = rules.speed;
-                                    newBorn.fromFrog = true;
-                                    pthread_t A;
-                                    pthread_create(&A, NULL, singleFrogProjectileHandler, (void*)&newBorn);
-                                    break;
-                                }
-                            }
-                            pthread_mutex_unlock(&semFrogProjActions);
-                        }
-                        break;
-                }
-                if(update)
-                {
-                    sem_wait(&mainBuffer.sem_free_space);
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    if(mainBuffer.index < BUFFER_SIZE)
+                case 'd':
+                case 'D':
+                case KEY_RIGHT:
+                    update = true;
+                    frogger.x += COLUMNS_PER_BLOCK;
+                    if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
                     {
-                        mainBuffer.data[mainBuffer.index].type = 'F';
-                        mainBuffer.data[mainBuffer.index].value.frogger = frogger;
-                        mainBuffer.index++;
+                        frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
                     }
-                    pthread_mutex_unlock(&mainBuffer.mutex);
+                    break;
+
+                case 'a':
+                case 'A':
+                case KEY_LEFT:
+                    update = true;
+                    frogger.x -= COLUMNS_PER_BLOCK;
+                    if (frogger.x < 1)
+                    {
+                        frogger.x = 1;
+                    }
+                    break;
+
+                case 'w':
+                case 'W':
+                case KEY_UP:
+                    update = true;
+                    frogger.y -= ROWS_PER_BLOCK;
+                    if(frogger.y < SCOREBOARD_ROWS)
+                    {
+                        frogger.y = SCOREBOARD_ROWS;
+                    }
+                    break;
+
+                case 's':
+                case 'S':
+                case KEY_DOWN:
+                    update = true;
+                    frogger.y += ROWS_PER_BLOCK;
+                    if (frogger.y > (ROWS_PER_MAP - 3))
+                    {
+                        frogger.y = ROWS_PER_MAP - 1;
+                    }
+                    break;
+
+                case ' ': // generazione di un proietile
+                    if(rules.enemies)
+                    {
+                        pthread_mutex_lock(&semFrogProjActions);
+                        for(short p = 0; p < MAX_FROG_PROJ; p++)
+                        {
+                            if(frogProjectilesActions[p] == EMPTY)
+                            {
+                                static Projectile newBorn;
+                                newBorn.ID = p;
+                                newBorn.x = frogger.x + 3;
+                                newBorn.y = frogger.y - 1;
+                                newBorn.speed = rules.speed;
+                                newBorn.fromFrog = true;
+                                pthread_t A;
+                                pthread_create(&A, NULL, singleFrogProjectileHandler, (void*)&newBorn);
+                                break;
+                            }
+                        }
+                        pthread_mutex_unlock(&semFrogProjActions);
+                    }
+                    break;
+            }
+            if(update)
+            {
+                sem_wait(&mainBuffer.sem_free_space);
+                pthread_mutex_lock(&mainBuffer.mutex);
+                if(mainBuffer.index < BUFFER_SIZE)
+                {
+                    mainBuffer.data[mainBuffer.index].type = 'F';
+                    mainBuffer.data[mainBuffer.index].value.frogger = frogger;
+                    mainBuffer.index++;
                 }
-            } 
-        }
+                pthread_mutex_unlock(&mainBuffer.mutex);
+                pthread_mutex_lock(&semFrogger); Frogger = frogger; pthread_mutex_unlock(&semFrogger);
+            }
+        } 
 
         usleep(FRAME_UPDATE); 
     } while (true);
@@ -524,7 +504,74 @@ void *mainManager(void *args)
         }
         else if(frogRow > RIVERSIDE_ROWS && frogRow <= (RIVERSIDE_ROWS+RIVER_ROWS)) // se la rana e' all'altezza del fiume
         {
-            
+            frogRow -= (RIVERSIDE_ROWS + 1);
+
+            for(short c = 0; c < MAX_CROCS; c++)
+            {
+                if(WhatShouldIDo[frogRow][c] == ALIVE)
+                {
+                    frogOnCrocodile = frogCrocodileCD(frogger.x, allCrocs[frogRow][c].x);
+                    if(frogOnCrocodile)
+                    {
+                        if(collidedCroc.PTID != allCrocs[frogRow][c].PTID)  // se la rana e' appena salita su quel coccodrillo
+                        {
+                            collidedCroc = allCrocs[frogRow][c];            // salviamo i dati sul coccodrillo
+                            xDiff = frogger.x - collidedCroc.x;             // differenza rana-coccodrillo
+                            oldFrogX = frogger.x;                           // salviamo le coordinate della rana
+                        }
+                        else
+                        {
+                            bool updateFrog = false; short xDiff2;
+
+                            if(collidedCroc.x != allCrocs[frogRow][c].x || frogger.x != oldFrogX) 
+                            {
+                                xDiff2 = frogger.x - allCrocs[frogRow][c].x;   // calcoliamo la differenza attuale
+                                updateFrog = true;
+
+                                short realDiff = (xDiff - xDiff2);
+
+                                if(realDiff != 1 && realDiff != -1)         // si e' spostata anche la rana
+                                {
+                                    if(realDiff > 1)
+                                        realDiff -= COLUMNS_PER_BLOCK;
+                                    else if(realDiff < -1)
+                                        realDiff += COLUMNS_PER_BLOCK;
+                                }
+                                frogger.x += realDiff; // cosi' la rana si e' mossa mantenendo la differenza iniziale
+                            }
+
+                            if(updateFrog)
+                            {
+                                if (frogger.x < 1)
+                                    frogger.x = 1;
+                                else if (frogger.x > COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1)
+                                    frogger.x = COLUMNS_PER_MAP - COLUMNS_PER_BLOCK+1;
+
+                                oldFrogX = frogger.x;
+
+                                pthread_mutex_lock(&semFrogger);
+                                Frogger = frogger;
+                                pthread_mutex_unlock(&semFrogger);
+                            }
+
+                            collidedCroc = allCrocs[frogRow][c];               // salvataggio
+                            xDiff = frogger.x - collidedCroc.x;
+                        }
+                        if(collidedCroc.splash > 0 && collidedCroc.splash < 60)
+                        {
+                            printDanger = true;
+                            yDanger = collidedCroc.y;
+                            dirDanger = collidedCroc.direction;
+                        }
+                        break;
+                    }
+                }
+            }
+            if(!frogOnCrocodile && !GODMODE)
+            {
+                currentGame.lives--;
+                endManche=true;
+            }
         }
 
         // STAMPA TUTTI I COCCODRILLI
@@ -587,7 +634,7 @@ void *mainManager(void *args)
         }
 
         // STAMPA TUTTI I NEMICI E RELATIVI PROIETTILI
-        for(short e = 0; e < MAX_ENEMIES; e++)
+        for(short e = 0; e < MAX_ENEMIES && rules.enemies; e++)
         {   
             if(EnemiesActions[e] == ALIVE)
             {
@@ -601,9 +648,12 @@ void *mainManager(void *args)
             }
             if(enemyProjectilesActions[e] == ALIVE)
             {
-                pthread_mutex_lock(&semCurses);
-                printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
-                pthread_mutex_unlock(&semCurses);
+                if(enemyProjectiles[e].y < 52)
+                {
+                    pthread_mutex_lock(&semCurses);
+                    printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
+                    pthread_mutex_unlock(&semCurses);
+                }
             }
             else if(enemyProjectilesActions[e] == KILLED)
             {
@@ -611,6 +661,7 @@ void *mainManager(void *args)
             }   
         }
 
+        pthread_mutex_lock(&semFrogger); Frogger = frogger; pthread_mutex_unlock(&semFrogger);
         pthread_mutex_lock(&semCurses); printFrog(frogger.x, frogger.y); pthread_mutex_unlock(&semCurses);
 
         // STAMPA I PROIETTILI DELLA RANA
@@ -618,13 +669,17 @@ void *mainManager(void *args)
         {
             if(frogProjectilesActions[p] == ALIVE)
             {
-                pthread_mutex_lock(&semCurses);
-                printProjectile(frogProjectiles[p].x, frogProjectiles[p].y, true);
-                pthread_mutex_unlock(&semCurses);
+                if(frogProjectiles[p].y > 2)
+                {
+                    pthread_mutex_lock(&semCurses);
+                    printProjectile(frogProjectiles[p].x, frogProjectiles[p].y, true);
+                    pthread_mutex_unlock(&semCurses);
+                }
             }
             else if(frogProjectilesActions[p] == KILLED)
             {
                 frogProjectilesActions[p] = EMPTY;
+                frogProjectiles[p].y = 1;
             }
         }
 
@@ -704,7 +759,7 @@ void *mainManager(void *args)
                 pthread_mutex_lock(&semCurses);
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 7, false);
                 mvprintw(DebugLine, DEBUG_COLUMNS, "COLLISION");
-                if(false)   // FROG - ENEMIES
+                if(frogEnemyCollided)   // FROG - ENEMIES
                 {
                     CHANGE_COLOR(RED_DEBUG);
                     mvprintw(DebugLine+1, DEBUG_COLUMNS, "  true   ");
@@ -726,10 +781,11 @@ void *mainManager(void *args)
                     CHANGE_COLOR(DEFAULT);
                 }  
 
-                if(false)  // FROG - CROCODILE
+                if(frogOnCrocodile)  // FROG - CROCODILE
                 {
                     CHANGE_COLOR(GREEN_DEBUG);
                     mvprintw(DebugLine+3, DEBUG_COLUMNS, "%03d : %03d", collidedCroc.x, collidedCroc.y);
+                    mvprintw(DebugLine+3, DEBUG_COLUMNS+40, "%03d ", collidedCroc.splash);
                     CHANGE_COLOR(DEFAULT);
                 } else {
                     short fRow = yToRowNumber(frogger.y);
@@ -776,6 +832,13 @@ void *mainManager(void *args)
             }
         }  
 
+        if(printDanger)
+        {
+            pthread_mutex_lock(&semCurses);
+            printDangerSign(dirDanger, yDanger); printDanger = false;
+            pthread_mutex_unlock(&semCurses);
+        }
+
         // GENERA NUOVI NEMICI DOPO LA LORO MORTE
         if(fps % 10 == 0 && fps > 0 && rules.enemies)
         {
@@ -809,6 +872,8 @@ void *mainManager(void *args)
             }
         }
 
+
+
         // SE IL TEMPO E' SCADUTO
         if((rules.time-seconds) <= -1 && !GODMODE)
         {
@@ -829,12 +894,10 @@ void *mainManager(void *args)
             }
             pthread_mutex_unlock(&mainBuffer.mutex);
 
-            pthread_mutex_lock(&semFrogger);
-            frogAtStart = true;
-            pthread_mutex_unlock(&semFrogger);
-
             frogger.x = (BLOCK_PER_MAP_ROWS / 2) * COLUMNS_PER_BLOCK +1; // x iniziale (centro mappa)
             frogger.y = ROWS_PER_MAP - 1; // y iniziale (ultima riga)
+
+            pthread_mutex_lock(&semFrogger); Frogger = frogger; pthread_mutex_unlock(&semFrogger);
 
             // NEMICI E PROIETTILI
             for(short en = 0; en < MAX_ENEMIES; en++)
@@ -853,8 +916,17 @@ void *mainManager(void *args)
                 }
             }
 
-            // COCCODRILLI
+            for(short p = 0; p < MAX_FROG_PROJ; p++)
+            {
+                if(frogProjectilesActions[p] == ALIVE)
+                {
+                    pthread_mutex_lock(&semFrogProjActions);
+                    frogProjectilesActions[p] = MUST_KILL;
+                    pthread_mutex_unlock(&semFrogProjActions);
+                }
+            }
 
+            // COCCODRILLI
             for(short r = 0; r < RIVER_ROWS; r++)
             {
                 for(short c = 0; c < MAX_CROCS; c++)
@@ -892,17 +964,6 @@ void *mainManager(void *args)
                 }
             } while (!cleaned);
             
-            /*
-            for(short r = 0; r < RIVER_ROWS; r++)
-            {
-                for(short c = 0; c < MAX_CROCS; c++)
-                {
-                    char s[30]; short v = WhatShouldIDo[r][c];
-                    sprintf(s, "[%d][%d]: %d", r, c, v);
-                    logChat(s);
-                }
-            } */
-
             newCrocodileScene(speeds, directions, spawnTimers, &rules);
 
             // RESPAWN NEMICI
@@ -1083,47 +1144,6 @@ void *singleCrocodileHandler(void *arg1)
     usleep(FRAME_UPDATE);
 
     do{
-        if(aliveTime % me.speed == 0) // se deve aggiornarsi
-        {
-            if(me.direction) // se e' 1 va a destra
-            {
-                me.x++;
-                if(me.x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
-                {
-                    pthread_mutex_lock(&crocActions);
-                    WhatShouldIDo[me.row][me.ID] = MUST_KILL;
-                    pthread_mutex_unlock(&crocActions);
-                    sem_wait(&mainBuffer.sem_free_space);
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    if(mainBuffer.index < BUFFER_SIZE)
-                    {
-                        mainBuffer.data[mainBuffer.index].type = 'C';
-                        mainBuffer.data[mainBuffer.index].value.croc = me;
-                        mainBuffer.index++;
-                    }
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                }
-            }
-            else // se e' 0 va a sinistra
-            {
-                me.x--;
-                if(me.x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
-                {
-                    pthread_mutex_lock(&crocActions);
-                    WhatShouldIDo[me.row][me.ID] = MUST_KILL;
-                    pthread_mutex_unlock(&crocActions);
-                    sem_wait(&mainBuffer.sem_free_space);
-                    pthread_mutex_lock(&mainBuffer.mutex);
-                    if(mainBuffer.index < BUFFER_SIZE)
-                    {
-                        mainBuffer.data[mainBuffer.index].type = 'C';
-                        mainBuffer.data[mainBuffer.index].value.croc = me;
-                        mainBuffer.index++;
-                    }
-                    pthread_mutex_unlock(&mainBuffer.mutex);
-                }
-            }
-        }
         if(me.splash != GOOD_CROC_FLAG)
         {
             me.splash--;
@@ -1138,12 +1158,63 @@ void *singleCrocodileHandler(void *arg1)
                     mainBuffer.index++;
                 }
                 pthread_mutex_unlock(&mainBuffer.mutex);
+
                 pthread_mutex_lock(&crocActions);
-                WhatShouldIDo[me.row][me.ID] = MUST_KILL;
+                WhatShouldIDo[me.row][me.ID] = KILLED;
                 pthread_mutex_unlock(&crocActions);
+                
+                pthread_exit(NULL);                
+            }
+        }
+        if(aliveTime % me.speed == 0) // se deve aggiornarsi
+        {
+            if(me.direction) // se e' 1 va a destra
+            {
+                me.x++;
+                if(me.x >= COLUMNS_PER_MAP + 1) // se e' appena uscito dallo schermo
+                {
+                    sem_wait(&mainBuffer.sem_free_space);
+                    pthread_mutex_lock(&mainBuffer.mutex);
+                    if(mainBuffer.index < BUFFER_SIZE)
+                    {
+                        mainBuffer.data[mainBuffer.index].type = 'C';
+                        mainBuffer.data[mainBuffer.index].value.croc = me;
+                        mainBuffer.index++;
+                    }
+                    pthread_mutex_unlock(&mainBuffer.mutex);
+
+                    pthread_mutex_lock(&crocActions);
+                    WhatShouldIDo[me.row][me.ID] = KILLED;
+                    pthread_mutex_unlock(&crocActions);
+                    
+                    pthread_exit(NULL); 
+                }
+            }
+            else // se e' 0 va a sinistra
+            {
+                me.x--;
+                if(me.x <= 0 - CROCODILE_COLUMNS) // se e' appena uscito dallo schermo
+                {
+                    sem_wait(&mainBuffer.sem_free_space);
+                    pthread_mutex_lock(&mainBuffer.mutex);
+                    if(mainBuffer.index < BUFFER_SIZE)
+                    {
+                        mainBuffer.data[mainBuffer.index].type = 'C';
+                        mainBuffer.data[mainBuffer.index].value.croc = me;
+                        mainBuffer.index++;
+                    }
+                    pthread_mutex_unlock(&mainBuffer.mutex);
+
+                    pthread_mutex_lock(&crocActions);
+                    WhatShouldIDo[me.row][me.ID] = KILLED;
+                    pthread_mutex_unlock(&crocActions);
+                    
+                    pthread_exit(NULL); 
+                }
             }
         }
         pthread_mutex_lock(&crocActions);
+
         switch(WhatShouldIDo[me.row][me.ID])
         {
             case ALIVE:
@@ -1223,7 +1294,7 @@ Crocodile buildCrocodile(short x, short y, short direction, short speed, short s
         if(prob == 0)
         {
             short min = ((CROCODILE_COLUMNS) + 5) * speed;
-            short max = (((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * speed ;
+            short max = ((((CROCODILE_COLUMNS * 2) + COLUMNS_PER_MAP)) * speed)/2 ;
             croc.splash = randomNumber(min, max);
         }
     }
