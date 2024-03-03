@@ -108,6 +108,15 @@ bool game()
         // FINE PARTITA (cancellazione threads e mutex)
         pthread_cancel(tFrog);
         pthread_join(tFrog, NULL);
+        
+        pthread_mutex_destroy(&semDifficult);
+        pthread_mutex_destroy(&semCurses);
+        pthread_mutex_destroy(&semFrogger);
+        pthread_mutex_destroy(&crocActions);
+        pthread_mutex_destroy(&enemiesActions);
+        pthread_mutex_destroy(&semFrogProjActions);
+        pthread_mutex_destroy(&semEnProjActions);
+
 
         clear(); 
         CHANGE_COLOR(DEFAULT);

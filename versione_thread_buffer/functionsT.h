@@ -9,7 +9,7 @@
 \************/
 
 // Numero di microsecondi tra un update e l'altro.
-#define FRAME_UPDATE 27.5 * 1000
+#define FRAME_UPDATE 25.5 * 1000
 
 // Costanti per stampare a video le coordinate di debug.
 #define DEBUG_COLUMNS COLUMNS_PER_MAP+5

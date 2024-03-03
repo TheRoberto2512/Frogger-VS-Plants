@@ -44,7 +44,7 @@ bool entityAndProjectileCollisionDetector(short x1, short y1, short top1, short 
 
 bool frogProjectileEnemyProjectileCollisionDetector(short frogProjX, short frogProjY, short enemyProjX, short enemyProjY)
 {
-    if( ( frogProjX == enemyProjX ) && ( frogProjY <= enemyProjY ) )
+    if( ( frogProjX == enemyProjX ) && ( frogProjY <= enemyProjY ) && (frogProjY != 0 && enemyProjX != 0) )
     {
         // Dato che i proiettili solo entita' 1x1, affinche' si verifichi una collisione
         // entrambe le coordinate (x e y) di ogni proiettile devono avere gli stessi valori.

@@ -223,6 +223,7 @@ void *mainManager(void *args)
 
     Crocodile collidedCroc; collidedCroc.PTID = 0;                  // per salvare il coccodrillo su cui la rana sale
     short xDiff; short oldFrogX; short xFDiff;
+    short nullCounters[RIVER_ROWS];
 
     // FLAG BOOLEANE PER GESTIRE LA PARTITA
     bool endManche = false; bool keepPlaying = true;                                 
@@ -262,16 +263,18 @@ void *mainManager(void *args)
     short speeds[RIVER_ROWS];                                                                   // salva le velocita' delle corsie
     short spawnTimers[RIVER_ROWS] = {32000, 32000, 32000, 32000, 32000, 32000, 32000, 32000};   // inizializzati a valori altissimi
     randomSeed();
-
+    
     directions[0] = rand() % 2; // puo' essere 0 o 1
 
     newCrocodileScene(speeds, directions, spawnTimers, &rules);
 
-    // PRE-PARTITA: Nemici
+    // PRE-PARTITA: Nemici e Proiettili
     Enemy allEnemies[MAX_ENEMIES];          // salva tutti i nemici correnti
     pthread_t A;
     short rowsY[RIVERSIDE_ROWS];            // salva le coordinate Y delle righe
 
+    Projectile enemyProjectiles[MAX_ENEMIES];    
+    
     if(rules.enemies)
     {
         rowsY[0] = (LILY_PADS_ROWS * ROWS_PER_BLOCK) + SCOREBOARD_ROWS;
@@ -284,17 +287,18 @@ void *mainManager(void *args)
         {
             EnemiesActions[r] = EMPTY;
             enemyProjectilesActions[r] = EMPTY;
+            enemyProjectiles[r].y=0;
         }
 
         newEnemiesScene(rowsY, allEnemies);
     }
 
-    // PRE-PARTITA: Proiettili
-    Projectile enemyProjectiles[MAX_ENEMIES];
+    // PRE-PARTITA: Proiettili Rana
     Projectile frogProjectiles[MAX_FROG_PROJ];
     for(short r = 0; r < MAX_FROG_PROJ; r++)
     {
         frogProjectilesActions[r] = EMPTY;
+        frogProjectiles[r].y=0;
     }
 
     // INIZIO PARTITA
@@ -303,13 +307,6 @@ void *mainManager(void *args)
         {
             pthread_mutex_lock(&semCurses); clear(); customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true); pthread_mutex_unlock(&semCurses);
         } 
-
-        // INIZIO STAMPE
-        pthread_mutex_lock(&semCurses);
-        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);             // stampa i bordi
-        printScoreBoard(currentGame.lives, currentGame.score, (rules.time - seconds), FULL_TIME);  // aggiorna la scoreboard
-        printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                  // stampa la mappa
-        pthread_mutex_unlock(&semCurses);
 
         // LETTURE
         pthread_mutex_lock(&mainBuffer.mutex);
@@ -347,6 +344,19 @@ void *mainManager(void *args)
             mainBuffer.index = 0;
         }
         pthread_mutex_unlock(&mainBuffer.mutex);
+
+        // INIZIO STAMPE
+        pthread_mutex_lock(&semCurses);
+        customBorder(0, 0, COLUMNS_PER_MAP + 2, ROWS_PER_MAP + SCOREBOARD_ROWS, true);             // stampa i bordi
+        printScoreBoard(currentGame.lives, currentGame.score, (rules.time - seconds), FULL_TIME);  // aggiorna la scoreboard
+        printMap(true, emptyLilyPads, (fps == 0 && seconds == 0) ? true : false);                  // stampa la mappa
+        pthread_mutex_unlock(&semCurses);
+
+        if(frogger.y < minRow)
+        {
+            minRow = frogger.y;
+            currentGame.score += ROW_UP;
+        }  
 
         // COLLISIONI
         bool frogEnPrjsCollided = false;                                                                        // proiettili nemici - rana
@@ -425,7 +435,7 @@ void *mainManager(void *args)
 
                 for(short en = 0; en < MAX_ENEMIES && !twoProjectilesCollided; en++)             
                 {
-                    if(enemyProjectilesActions[en] == ALIVE)
+                    if(enemyProjectilesActions[en] == ALIVE && frogProjectilesActions[fr] == ALIVE)
                     {
                         twoProjectilesCollided = frogProjectileEnemyProjectileCollisionDetector(frogProjectiles[fr].x, frogProjectiles[fr].y, enemyProjectiles[en].x, enemyProjectiles[en].y);
                         if(twoProjectilesCollided)
@@ -608,6 +618,37 @@ void *mainManager(void *args)
             }
         }
 
+        for(short r = 0; r < RIVER_ROWS; r++) // controlla non ci siano irregolarita'
+        {
+            short nCroc=0;
+            for(short c = 0; c < MAX_CROCS; c++)
+            {
+                if(WhatShouldIDo[r][c]!= EMPTY)
+                {
+                    nCroc++;
+                }
+            }
+            if(!nCroc)
+            {
+                if(nullCounters[r] % 60 == 0)
+                {
+                spawnCrocodile(buildCrocodile(spawns[directions[r]], computeY(r), directions[r], speeds[r], rules.BadCrocodile, r, 0));
+                if(directions[r]) // se va a destra
+                    spawnTimers[r] = (crocodileSpace() + (CROCODILE_COLUMNS*2)) * speeds[r];
+                else
+                    spawnTimers[r] = (crocodileSpace() + CROCODILE_COLUMNS) * speeds[r]; 
+                }
+                else
+                     nullCounters[r]++;
+            }
+            else
+            {
+                nullCounters[r] = 0;
+            }
+                 
+        }
+
+
         for(short r = 0; r < RIVER_ROWS; r++)
         {
             if(spawnTimers[r] <= 0)
@@ -648,7 +689,7 @@ void *mainManager(void *args)
             }
             if(enemyProjectilesActions[e] == ALIVE)
             {
-                if(enemyProjectiles[e].y < 52)
+                if(enemyProjectiles[e].y < 52 && enemyProjectiles[e].y > 2)
                 {
                     pthread_mutex_lock(&semCurses);
                     printProjectile(enemyProjectiles[e].x, enemyProjectiles[e].y, false);
@@ -657,6 +698,7 @@ void *mainManager(void *args)
             }
             else if(enemyProjectilesActions[e] == KILLED)
             {
+                enemyProjectiles[e].y=0;
                 enemyProjectilesActions[e] = EMPTY;
             }   
         }
@@ -696,7 +738,7 @@ void *mainManager(void *args)
                 pthread_mutex_unlock(&semCurses);
                 DebugLine += (2 + 1 + 1); // 2 (bordi) + 1 (righe) + 1 (spazio)
             }
-            if(FROG_PROJECTILES_DEBUG)
+            if(FROG_PROJECTILES_DEBUG && rules.enemies)
             {
                 pthread_mutex_lock(&semCurses);
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, 2+MAX_FROG_PROJ, false);
@@ -731,7 +773,7 @@ void *mainManager(void *args)
                 DebugLine += 2 + (RIVER_ROWS) + 1;
                 pthread_mutex_unlock(&semCurses);
             }
-            if(ENEMIES_DEBUG)
+            if(ENEMIES_DEBUG && rules.enemies)
             {
                 pthread_mutex_lock(&semCurses);
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
@@ -741,7 +783,7 @@ void *mainManager(void *args)
                 pthread_mutex_unlock(&semCurses); 
                 DebugLine += 2 + MAX_ENEMIES + 1; // 2 (bordi) + MAX_ENEMIES (righe) + 1 (spazio)
             }
-            if(ENEMIES_PROJECTILES_DEBUG)
+            if(ENEMIES_PROJECTILES_DEBUG && rules.enemies)
             {
                 pthread_mutex_lock(&semCurses);
                 customBorder(COLUMNS_PER_MAP+SCOREBOARD_ROWS, DebugLine, DEBUG_TOP, MAX_ENEMIES+2, false);
